@@ -51,4 +51,6 @@ introduce loss regularization technique to smooth Embedding space for similar ob
 on source data to get an embedding (and label) of target data classes.
 
 ### Learning Techniques
-QFSL (Quasi-Fully Supervised Learning)
+QFSL ( [Quasi-Fully Supervised Learning](https://arxiv.org/abs/1803.11320) )- 
+Forwarding target domain images through the network during training 
+and S+T classifier with spacial loss regularisation to bias weights.
