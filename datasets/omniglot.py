@@ -55,6 +55,7 @@ class ZSLOmniglot(Dataset):
                                     'Syriac_(Estrangelo)': 23,
                                     'Tagalog': 17,
                                     'Tifinagh': 55}
+        self._omniglot_num_cls = sum(self._alphabet_vs_letter.values())
         self.letter_amount = 20
         self._alphabets_samples_range = {key: val * self.letter_amount for key, val in self._alphabet_vs_letter.items()}
         self._alphabets_samples_range = torch.tensor(list(self._alphabets_samples_range.values()))
@@ -79,6 +80,10 @@ class ZSLOmniglot(Dataset):
         self._keeped_indexes = [list(range(min_idx, max_idx + 1))
                                 for min_idx, max_idx in self._alphabets_samples_range.values()]
         self._keeped_indexes = [idx for idx_set in self._keeped_indexes for idx in idx_set]
+        self._number_of_classes = sum(self._alphabet_vs_letter.values())
+
+    def number_of_classes(self, full_data=True):
+        return self._omniglot_num_cls if full_data else self._number_of_classes
 
     def __len__(self):
         return self.data_amount

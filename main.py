@@ -70,9 +70,10 @@ def main(proc_device, args, cfg):
                                 loss_fn=loss, epoch=epoch, cfg=cfg)
         for metric_name, metric_val in val_output.items():
             writer.add_scalar(f'validation/{metric_name}', metric_val, epoch * (len(train_loader) + 1))
-        if val_output['loss'] < best_loss:
-            best_loss = val_output['loss']
+        if val_output[cfg.LOSS.NAME] < best_loss:
+            best_loss = val_output[cfg.LOSS.NAME]
             save_weights(model=model,
+                         optimizer=optimizer,
                          prefix='best',
                          model_name=cfg.MODEL.NAME,
                          epoch=epoch,
@@ -80,7 +81,8 @@ def main(proc_device, args, cfg):
                          parallel=cfg.SYSTEM.PARALLEL)
         elif (epoch + 1) % cfg.SYSTEM.SAVE_FREQ == 0:
             save_weights(model=model,
-                         prefix='',
+                         optimizer=optimizer,
+                         prefix='checkpoint',
                          model_name=cfg.MODEL.NAME,
                          epoch=epoch,
                          save_dir=snapshot_dir,

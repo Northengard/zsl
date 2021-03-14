@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 from utils import AverageMeter, get_learning_rate
+from metrics import get_confusion_matix, prec_rec_acc
 
 
 def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board_writer, epoch, cfg):
@@ -13,8 +14,8 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
     tq.set_description(f'Train: Epoch {epoch}, lr {get_learning_rate(optimizer):.4e}')
 
     model.train()
-    for itr, sample in enumerate(dataloader):
-        images, labels = sample['image'], sample['label']
+    for itr, batch in enumerate(dataloader):
+        images, labels = batch['image'], batch['label']
         images = images.to(device)
         labels = labels.to(device)
 
@@ -34,16 +35,17 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
 
         if sheduler:
             sheduler.step()
-        tq.update()
+        tq.update(cfg.TRAIN.BATCH_SIZE)
     tq.close()
 
 
 def validation(model, dataloader, loss_fn, device, epoch, cfg):
     model.eval()
     num_iter = len(dataloader)
-    tq = tqdm(total=num_iter * cfg.TRAIN.BATCH_SIZE)
+    tq = tqdm(total=num_iter * cfg.TEST.BATCH_SIZE)
     tq.set_description(f'Validation: Epoch {epoch}')
     loss_handler = AverageMeter()
+    conf_matr = torch.zeros(2, 2)
     for itr, sample in enumerate(dataloader):
         images, labels = sample['image'], sample['label']
         images = images.to(device)
@@ -54,7 +56,10 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
         loss = loss_fn(output, labels)
         loss_handler.update(loss.item())
 
-        tq.update()
+        conf_matr += get_confusion_matix(output, labels)
+        tq.update(cfg.TEST.BATCH_SIZE)
         tq.set_postfix(avg_loss=loss_handler.avg)
     tq.close()
-    return {'loss': loss_handler.avg}
+    val_results = {cfg.LOSS.NAME: loss_handler.avg}
+    val_results.update(prec_rec_acc(conf_matr))
+    return val_results
