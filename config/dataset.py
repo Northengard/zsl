@@ -7,5 +7,6 @@ _OMNIGLOT.TEST_LANGS_LIST = ['Mkhedruli_(Georgian)', 'N_Ko',
                              'Tagalog', 'Tifinagh']
 _OMNIGLOT.POS_NEG_RATIO = 0.5
 _OMNIGLOT.DOWNLOAD = False
+_OMNIGLOT.IMAGE_SIZE = [105, 105]
 
 DATASET_DEFAULTS = {'omniglot': _OMNIGLOT}

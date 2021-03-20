@@ -1,26 +1,27 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
+from pytorch_metric_learning import losses
+from pytorch_metric_learning.distances import CosineSimilarity
+from pytorch_metric_learning.reducers import ThresholdReducer
+from pytorch_metric_learning.regularizers import LpRegularizer
 
 
 class ContrastiveLoss(nn.Module):
-    """
-    Contrastive loss
-    Takes embeddings of two samples and a target label == 1 if samples are from the same class and label == 0 otherwise
-    """
-
     def __init__(self, config):
         super(ContrastiveLoss, self).__init__()
         self.margin = config.LOSS.PARAMS.MARGIN
+        self.embedding_size = config.MODEL.PARAMS.VECTOR_SIZE
+        self.temperature = 2
+        self.scale = 10
         self.eps = 1e-9
+        self.criterion = losses.ContrastiveLoss(pos_margin=0,
+                                                neg_margin=config.LOSS.PARAMS.MARGIN)
 
-    def forward(self, output, target, size_average=True):
-        output1 = output[:, 0]
-        output2 = output[:, 1]
-        distances = (output2 - output1).pow(2).sum(1)  # squared distances
-        losses = 0.5 * (target.float() * distances +
-                        (1 - target).float() * func.relu(self.margin - (distances + self.eps).sqrt()).pow(2))
-        return losses.mean() if size_average else losses.sum()
+    def forward(self, embeddings, labels):
+        output = torch.reshape(embeddings, shape=(-1, self.embedding_size))
+        target = torch.reshape(labels, shape=(-1,))
+        return self.criterion(output, target)
 
 
 class TripletLoss(nn.Module):
@@ -40,32 +41,6 @@ class TripletLoss(nn.Module):
         return losses.mean() if size_average else losses.sum()
 
 
-class OnlineContrastiveLoss(nn.Module):
-    """
-    Online Contrastive loss
-    Takes a batch of embeddings and corresponding labels.
-    Pairs are generated using pair_selector object that take embeddings and targets and return indices of positive
-    and negative pairs
-    """
-
-    def __init__(self, margin, pair_selector):
-        super(OnlineContrastiveLoss, self).__init__()
-        self.margin = margin
-        self.pair_selector = pair_selector
-
-    def forward(self, embeddings, target):
-        positive_pairs, negative_pairs = self.pair_selector.get_pairs(embeddings, target)
-        if embeddings.is_cuda:
-            positive_pairs = positive_pairs.cuda()
-            negative_pairs = negative_pairs.cuda()
-        positive_loss = (embeddings[positive_pairs[:, 0]] - embeddings[positive_pairs[:, 1]]).pow(2).sum(1)
-        negative_loss = func.relu(
-            self.margin - (embeddings[negative_pairs[:, 0]] - embeddings[negative_pairs[:, 1]]).pow(2).sum(
-                1).sqrt()).pow(2)
-        loss = torch.cat([positive_loss, negative_loss], dim=0)
-        return loss.mean()
-
-
 class OnlineTripletLoss(nn.Module):
     """
     Online Triplets loss
@@ -80,7 +55,6 @@ class OnlineTripletLoss(nn.Module):
         self.triplet_selector = triplet_selector
 
     def forward(self, embeddings, target):
-
         triplets = self.triplet_selector.get_triplets(embeddings, target)
 
         if embeddings.is_cuda:

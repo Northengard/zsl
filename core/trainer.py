@@ -17,11 +17,11 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
     for itr, batch in enumerate(dataloader):
         images, labels = batch['image'], batch['label']
         images = images.to(device)
-        labels = labels.to(device)
+        # labels = labels.to(device)
+        image_labels = batch['image_labels'].to(device)
 
         output = model(images)
-
-        loss = loss_fn(output, labels)
+        loss = loss_fn(output, image_labels)
         loss.backward()
         loss_handler.update(loss.item())
         if (itr + 1) % cfg.TRAIN.UPDATE_STEP == 0:
@@ -46,19 +46,21 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
     tq.set_description(f'Validation: Epoch {epoch}')
     loss_handler = AverageMeter()
     conf_matr = torch.zeros(2, 2)
-    for itr, sample in enumerate(dataloader):
-        images, labels = sample['image'], sample['label']
-        images = images.to(device)
-        labels = labels.to(device)
+    with torch.no_grad():
+        for itr, batch in enumerate(dataloader):
+            images, labels = batch['image'], batch['label']
+            images = images.to(device)
+            labels = labels.to(device)
+            image_labels = batch['image_labels'].to(device)
 
-        output = model(images)
+            output = model(images)
 
-        loss = loss_fn(output, labels)
-        loss_handler.update(loss.item())
+            loss = loss_fn(output, image_labels)
+            loss_handler.update(loss.item())
 
-        conf_matr += get_confusion_matix(output, labels)
-        tq.update(cfg.TEST.BATCH_SIZE)
-        tq.set_postfix(avg_loss=loss_handler.avg)
+            conf_matr += get_confusion_matix(output, labels)
+            tq.update(cfg.TEST.BATCH_SIZE)
+            tq.set_postfix(avg_loss=loss_handler.avg)
     tq.close()
     val_results = {cfg.LOSS.NAME: loss_handler.avg}
     val_results.update(prec_rec_acc(conf_matr))

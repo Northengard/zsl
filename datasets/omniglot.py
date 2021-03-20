@@ -109,6 +109,7 @@ class ZSLOmniglot(Dataset):
             labels.append(label)
 
         input_tensor = torch.stack(images, 0)
-        input_label = torch.tensor(float(labels[0] == labels[1]), dtype=torch.float32)
+        input_label = torch.tensor(float(labels[0] == labels[1]), dtype=torch.long)
+        labels = torch.tensor(labels)
 
         return {'image': input_tensor, 'label': input_label, 'image_labels': labels}
