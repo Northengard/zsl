@@ -51,7 +51,14 @@ def main(proc_device, args, cfg):
         model = DataParallel(model)
     model = model.to(device)
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg.TRAIN.LR_STEPS)
+    if cfg.TRAIN.SCHEDULER == 'multistep':
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg.TRAIN.LR_STEPS,
+                                                         gamma=cfg.TRAIN.LR_FACTOR)
+    else:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                               factor=cfg.TRAIN.LR_FACTOR,
+                                                               patience=cfg.TRAIN.LR_STEPS[0],
+                                                               min_lr=cfg.TRAIN.LR / len(cfg.TRAIN.LR_STEPS))
 
     logger.info(f'model {cfg.MODEL.NAME} initialized')
 
@@ -62,14 +69,19 @@ def main(proc_device, args, cfg):
     best_loss = inf
     for epoch in range(cfg.TRAIN.N_EPOCHS):
         train(model=model, dataloader=train_loader,
-              loss_fn=loss, optimizer=optimizer, sheduler=scheduler, device=device,
-              logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
+              loss_fn=loss, optimizer=optimizer,
+              sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
+              device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
 
         logger.info(f'start to validate {epoch}')
         val_output = validation(model=model, dataloader=val_loader, device=device,
                                 loss_fn=loss, epoch=epoch, cfg=cfg)
-        for metric_name, metric_val in val_output.items():
-            writer.add_scalar(f'validation/{metric_name}', metric_val, epoch * (len(train_loader) + 1))
+        if cfg.TRAIN.SCHEDULER != 'multistep':
+            scheduler.step(val_output[cfg.LOSS.NAME])
+        if proc_device == 0:
+            for metric_name, metric_val in val_output.items():
+                writer.add_scalar(f'validation/{metric_name}', metric_val, epoch * (len(train_loader) + 1))
+
         if val_output[cfg.LOSS.NAME] < best_loss:
             best_loss = val_output[cfg.LOSS.NAME]
             save_weights(model=model,

@@ -1,0 +1,41 @@
+SYSTEM:
+  LOG_DIR: "logs"
+  SNAPSHOT_DIR: 'snapshots'
+  WORKERS: 4
+  NGPUS: 1
+  SAVE_FREQ: 10  # in epoch. In general may be better to operate with iterations.
+  PRINT_FREQ: 100
+  PARALLEL: False
+
+DATASET:
+  NAME: "omniglot"
+  PARAMS:
+    IMAGE_SIZE:
+      - 105
+      - 105
+
+MODEL:
+  NAME: "base_model"
+  PARAMS:
+    N_BLOCKS: 6
+    START_OUT_CHN: 2
+    CHN_SCALE_COEF: 2
+    VECTOR_SIZE: 200
+  PRETRAINED: ''
+
+TRAIN:
+  N_EPOCHS: 200
+  BATCH_SIZE: 64
+  SCHEDULER: 'plateau'
+  LR: 4e-2
+  LR_FACTOR: 0.2
+  LR_STEPS: [4, 0, 0, 0, 0]
+  UPDATE_STEP: 1
+
+TEST:
+  BATCH_SIZE: 128
+
+LOSS:
+  NAME: 'ContrastiveLoss'
+  PARAMS:
+    MARGIN: 1.
