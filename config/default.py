@@ -2,7 +2,7 @@ from yacs.config import CfgNode
 from .dataset import DATASET_DEFAULTS
 from .model import MODEL_DEFAULTS
 from .loss import LOSS_DEFAULTS
-
+from .transformations import TRANSFORMATION_DEFAULTS
 
 _C = CfgNode()
 
@@ -18,6 +18,10 @@ _C.SYSTEM.PARALLEL = False
 _C.DATASET = CfgNode()
 _C.DATASET.NAME = "omniglot"
 _C.DATASET.PARAMS = CfgNode(new_allowed=True)
+
+_C.TRANSFORMATIONS = CfgNode()
+_C.TRANSFORMATIONS.TYPE = 'v1_transforms'
+_C.TRANSFORMATIONS.PARAMS = CfgNode(new_allowed=True)
 
 _C.MODEL = CfgNode()
 _C.MODEL.NAME = "base_model"
@@ -35,6 +39,8 @@ _C.TRAIN.UPDATE_STEP = 1
 
 _C.TEST = CfgNode()
 _C.TEST.BATCH_SIZE = _C.TRAIN.BATCH_SIZE
+_C.TEST.DATA_SOURCE = './data/support_images'
+_C.TEST.SIM_THRESHOLD = 0.6
 
 _C.LOSS = CfgNode()
 _C.LOSS.NAME = 'ContrastiveLoss'
@@ -46,6 +52,7 @@ def update_config(cfg, args):
     cfg.DATASET.PARAMS = DATASET_DEFAULTS[cfg.DATASET.NAME]
     cfg.MODEL.PARAMS = MODEL_DEFAULTS[cfg.MODEL.NAME]
     cfg.LOSS.PARAMS = LOSS_DEFAULTS[cfg.LOSS.NAME]
+    cfg.TRANSFORMATIONS = TRANSFORMATION_DEFAULTS[cfg.TRANSFORMATIONS.TYPE]
     cfg.merge_from_file(args.cfg)
     if args.opts:
         cfg.merge_from_list(args.opts)

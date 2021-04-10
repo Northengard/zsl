@@ -2,5 +2,10 @@ yacs
 tqdm
 numpy
 torch
+tensorboard
 torchvision
+opencv-python
 pytorch_metric_learning
+matplotlib
+seaborn
+pandas

@@ -1,7 +1,8 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import torchvision
 import numpy as np
+from common import wrap_dataset
 
 
 def omniglot(config, is_train):
@@ -9,17 +10,7 @@ def omniglot(config, is_train):
                           pos_neg=config.DATASET.PARAMS.POS_NEG_RATIO,
                           test_langs=config.DATASET.PARAMS.TEST_LANGS_LIST,
                           download=config.DATASET.PARAMS.DOWNLOAD)
-    workers = config.SYSTEM.WORKERS
-    if is_train:
-        batch_size = config.TRAIN.BATCH_SIZE
-    else:
-        batch_size = config.TEST.BATCH_SIZE
-    dataloader = DataLoader(dataset=dataset,
-                            batch_size=batch_size,
-                            num_workers=workers,
-                            shuffle=is_train,
-                            pin_memory=True,
-                            drop_last=True)
+    dataloader = wrap_dataset(dataset=dataset, config=config, is_train=is_train)
     return dataloader
 
 

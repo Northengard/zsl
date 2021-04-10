@@ -13,13 +13,16 @@ from utils import get_logger
 import datasets
 import models
 import losses
-from core import train, validation
+from core import train, validation, evaluation
 from utils.storage import save_weights, load_weights
+from utils.visualisation import draw_confusion_matrix
 
 
 def parse_args(arg_list):
     parser = argparse.ArgumentParser('ZSL main')
     parser.add_argument('--cfg', required=True, help='path to config file')
+    parser.add_argument('-p', '--phase', type=str, default='train', choices=['train', 'eval'],
+                        help='Phase of experiment; set `train` for training end `eval` for evaluation')
     parser.add_argument('--opts', nargs=argparse.REMAINDER,
                         help='Modify config via command-line. Use <attrib_name> <new_val> pairs with whitespace sep')
     args = parser.parse_args(args=arg_list)
@@ -27,30 +30,27 @@ def parse_args(arg_list):
     return args
 
 
-def main(proc_device, args, cfg):
-    logger, snapshot_dir, log_dir = get_logger(cfg=cfg, cfg_name=os.path.basename(args.cfg))
-    if proc_device == 0:
-        writer = SummaryWriter(log_dir=log_dir, max_queue=100, flush_secs=5)
-    else:
-        writer = None
+def main_eval(model, proc_device, logger, writer, cfg):
+    model.evaluation()
 
-    logger.info(pprint.pformat(args))
-    logger.info(pprint.pformat(cfg))
+    eval_loader = getattr(datasets, cfg.DATASET.NAME)(cfg, is_train=False)
+    support_dataset = getattr(datasets, 'support_dataset')(cfg.TEST.DATA_SOURCE)
+    support_matrix = list()
+    sup_labels = ['None']
+    with torch.no_grad():
+        for item in support_dataset:
+            sup_image = item['image'].to(proc_device)
+            sup_labels.append(item['label'].numpy())
+            support_matrix.append(model(sup_image))
+    support_matrix = torch.stack(support_matrix, 0)
+    conf_matr = evaluation(model=model, dataloader=eval_loader, support_matrix=support_matrix,
+                           device=proc_device, threshold=cfg.TEST.SIM_THRESHOLD)
+    logger.info('confusion_matrix')
+    logger.info(conf_matr)
+    writer.add_figure('eval conf_matrix', draw_confusion_matrix(conf_matr, sup_labels))
 
-    logger.info(f"Using {proc_device} device")
 
-    loss = getattr(losses, cfg.LOSS.NAME)(cfg)
-
-    model = getattr(models, cfg.MODEL.NAME)(cfg)
-    optimizer = torch.optim.SGD(model.parameters(), lr=cfg.TRAIN.LR)
-    if cfg.MODEL.PRETRAINED:
-        load_weights(model=model,
-                     optimizer=optimizer,
-                     checkpoint_file=cfg.MODEL.PRETRAINED)
-    if cfg.SYSTEM.PARALLEL:
-        model = DataParallel(model)
-    model = model.to(device)
-
+def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir, cfg):
     if cfg.TRAIN.SCHEDULER == 'multistep':
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg.TRAIN.LR_STEPS,
                                                          gamma=cfg.TRAIN.LR_FACTOR)
@@ -102,12 +102,57 @@ def main(proc_device, args, cfg):
     logger.info('Done')
 
 
+def main(proc_device, args, cfg):
+    is_train = args.phase == 'train'
+
+    logger, snapshot_dir, log_dir = get_logger(cfg=cfg, cfg_name=os.path.basename(args.cfg), phase=args.phase)
+    if proc_device == 0:
+        writer = SummaryWriter(log_dir=log_dir, max_queue=100, flush_secs=5)
+    else:
+        writer = None
+
+    logger.info(pprint.pformat(args))
+    logger.info(pprint.pformat(cfg))
+
+    logger.info(f"Using {proc_device} device")
+
+    loss = getattr(losses, cfg.LOSS.NAME)(cfg)
+
+    model = getattr(models, cfg.MODEL.NAME)(cfg)
+    optimizer = torch.optim.SGD(model.parameters(), lr=cfg.TRAIN.LR) if is_train else None
+    if cfg.MODEL.PRETRAINED:
+        load_weights(model=model,
+                     optimizer=optimizer,
+                     checkpoint_file=cfg.MODEL.PRETRAINED)
+    if cfg.SYSTEM.PARALLEL:
+        model = DataParallel(model)
+    model = model.to(proc_device)
+
+    if is_train:
+        main_train(model=model,
+                   proc_device=proc_device,
+                   loss=loss,
+                   optimizer=optimizer,
+                   logger=logger,
+                   writer=writer,
+                   snapshot_dir=snapshot_dir,
+                   cfg=cfg)
+    else:
+        main_eval(model=model,
+                  proc_device=proc_device,
+                  logger=logger,
+                  writer=writer,
+                  cfg=cfg)
+
+
 if __name__ == '__main__':
     arguments = parse_args(os.sys.argv[1:])
     config.defrost()
     device = 0 if torch.cuda.is_available() else 'cpu'
-    if device:
+    if device == 0:
         config.SYSTEM.NGPUS = torch.cuda.device_count()
         config.SYSTEM.PARALLEL = config.SYSTEM.NGPUS > 1
+    if arguments.phase == 'eval':
+        config.TEST.BATCH_SIZE = 1
     config.freeze()
     main(proc_device=device, args=arguments, cfg=config)

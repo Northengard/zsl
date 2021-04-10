@@ -40,7 +40,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
 
 
 def validation(model, dataloader, loss_fn, device, epoch, cfg):
-    model.eval()
+    model.evaluation()
     num_iter = len(dataloader)
     tq = tqdm(total=num_iter * cfg.TEST.BATCH_SIZE)
     tq.set_description(f'Validation: Epoch {epoch}')

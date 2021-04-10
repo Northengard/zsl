@@ -10,6 +10,7 @@ SYSTEM:
 DATASET:
   NAME: "omniglot"
   PARAMS:
+    DOWNLOAD: True
     IMAGE_SIZE:
       - 105
       - 105
