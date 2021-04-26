@@ -49,10 +49,16 @@ _C.LOSS.PARAMS = CfgNode(new_allowed=True)
 
 def update_config(cfg, args):
     cfg.defrost()
+    cfg.merge_from_file(args.cfg)
+    # check if default is requred
+    # if len(cfg.DATASET.PARAMS) == 0:
     cfg.DATASET.PARAMS = DATASET_DEFAULTS[cfg.DATASET.NAME]
+    # if len(cfg.MODEL.PARAMS) == 0:
     cfg.MODEL.PARAMS = MODEL_DEFAULTS[cfg.MODEL.NAME]
+    # if len(cfg.LOSS.PARAMS) == 0:
     cfg.LOSS.PARAMS = LOSS_DEFAULTS[cfg.LOSS.NAME]
-    cfg.TRANSFORMATIONS = TRANSFORMATION_DEFAULTS[cfg.TRANSFORMATIONS.TYPE]
+    # if len(cfg.TRANSFORMATIONS.PARAMS) == 0:
+    cfg.TRANSFORMATIONS.PARAMS = TRANSFORMATION_DEFAULTS[cfg.TRANSFORMATIONS.TYPE]
     cfg.merge_from_file(args.cfg)
     if args.opts:
         cfg.merge_from_list(args.opts)

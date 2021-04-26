@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import torchvision
 import numpy as np
-from common import wrap_dataset
+from .common import wrap_dataset
 
 
 def omniglot(config, is_train):

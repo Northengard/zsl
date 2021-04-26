@@ -15,7 +15,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
 
     model.train()
     for itr, batch in enumerate(dataloader):
-        images, labels = batch['image'], batch['label']
+        images = batch['image']
         images = images.to(device)
         # labels = labels.to(device)
         image_labels = batch['image_labels'].to(device)
@@ -48,7 +48,7 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
     conf_matr = torch.zeros(2, 2)
     with torch.no_grad():
         for itr, batch in enumerate(dataloader):
-            images, labels = batch['image'], batch['label']
+            images = batch['image']
             images = images.to(device)
             labels = labels.to(device)
             image_labels = batch['image_labels'].to(device)

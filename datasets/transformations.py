@@ -1,9 +1,10 @@
 import numpy as np
 import cv2
+import torch
 
 from torchvision import transforms
 from skimage.draw import polygon
-from ..utils.visualisation import alpha_blend
+from utils.visualisation import alpha_blend
 from PIL import Image
 
 
@@ -215,11 +216,13 @@ class Rescale:
     def pad_and_resize(self, img):
         src_h, src_w = img.shape[:2]
         nn_w, nn_h = self.output_size
-        _, pad_h, _, pad_w = get_pad(nn_h, nn_w, src_h, src_w)
-        img = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
-        src_h, src_w = img.shape[:2]
-        self.resize_coef = nn_h / src_h
-        img = cv2.resize(img, tuple([0, 0]), fx=self.resize_coef, fy=self.resize_coef, interpolation=self.interpolation)
+        if (src_h != nn_h) or (nn_w != src_w):
+            _, pad_h, _, pad_w = get_pad(nn_h, nn_w, src_h, src_w)
+            img = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
+            src_h, src_w = img.shape[:2]
+            self.resize_coef = nn_h / src_h
+            img = cv2.resize(img, tuple([0, 0]), fx=self.resize_coef, fy=self.resize_coef,
+                             interpolation=self.interpolation)
         return img
 
     def __call__(self, sample):
@@ -269,6 +272,10 @@ class ToTensor:
                 sample[key] = self.to_tensor(item)
                 if self.do_normalize:
                     sample[key] = self.normalize(sample[key])
+            else:
+                if len(sample[key].shape) > 2:
+                    sample[key] = sample[key].transpose(2, 0, 1)
+                sample[key] = torch.Tensor(sample[key])
         return sample
 
 
@@ -303,24 +310,21 @@ class Transforms:
                               probability=conf.TRANSFORMATIONS.PARAMS.RANDOM_ERAZING.FLAG),
                 GaussianBlur(),
             ])
-        self.normalize = Normalize(conf, is_train, normalize=conf.TRANSFORMATIONS.PARAMS.NORMALIZE)
+        self.normalize = Normalize(conf, normalize=conf.TRANSFORMATIONS.PARAMS.NORMALIZE)
 
     def __call__(self, sample):
         if self.is_train:
             sample = self.train_transform(sample)
-        sample.pop('coords')
         sample = self.normalize(sample)
 
         return sample
 
 
 class Normalize:
-    def __init__(self, cfg, is_train, normalize=False):
-        self.input_size = cfg.TRAIN.IMAGE_SIZE
+    def __init__(self, cfg, normalize=False):
+        self.input_size = cfg.DATASET.PARAMS.IMAGE_SIZE
         trainsormations_list = [Rescale(tuple(self.input_size), cfg.TRANSFORMATIONS.PARAMS.INTERPOLATION),
                                 ToTensor(normalize=normalize)]
-        if is_train:
-            trainsormations_list = trainsormations_list[1:]
         self.normalize = transforms.Compose(trainsormations_list)
 
     def __call__(self, sample):
