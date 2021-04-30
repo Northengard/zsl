@@ -206,7 +206,7 @@ class Rescale:
             self.output_size = (output_size, output_size)
         else:
             self.output_size = output_size
-        self.output_size = np.array(self.output_size).astype(int)
+        self.output_size = tuple(self.output_size)
         self.resize_coef = 1.
         self.interpolation = interpolation
 
@@ -221,8 +221,7 @@ class Rescale:
             img = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
             src_h, src_w = img.shape[:2]
             self.resize_coef = nn_h / src_h
-            img = cv2.resize(img, tuple([0, 0]), fx=self.resize_coef, fy=self.resize_coef,
-                             interpolation=self.interpolation)
+            img = cv2.resize(img, self.output_size, interpolation=self.interpolation)
         return img
 
     def __call__(self, sample):

@@ -42,8 +42,8 @@ class DiscriminativeLoss(nn.Module):
                 continue
 
             centroid_mean = []
-            for lane_idx in labels:
-                seg_mask_i = (seg_gt_b == lane_idx)
+            for label_idx in labels:
+                seg_mask_i = (seg_gt_b == label_idx)
                 if not seg_mask_i.any():
                     continue
                 embedding_i = embedding_b[:, seg_mask_i]
@@ -80,8 +80,8 @@ class DiscriminativeLoss(nn.Module):
 
     def forward(self, model_out, gt):
         semantic_emb, instance_emb = model_out
-        semantic_gt = gt[:, 0].unsqueeze(1)
-        instance_gt = gt[:, 1].unsqueeze(1)
+        semantic_gt = gt[:, 0]#.unsqueeze(1)
+        instance_gt = gt[:, 1]#.unsqueeze(1)
 
         sem_loss = self._forward(semantic_emb, semantic_gt)
         inst_loss = self._forward(instance_emb, instance_gt)

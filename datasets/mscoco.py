@@ -15,11 +15,15 @@ def mscoco(config, is_train):
     return dataloader
 
 
+def annot_check(annots):
+    return [obj for obj in annots if type(obj['segmentation']) == list]
+
+
 class MsCocoDataset(Dataset):
     def __init__(self, config, is_train):
         self._sample_image_hw = config.DATASET.PARAMS.IMAGE_SIZE[::-1]
 
-        self._data_dir = os.path.sep.join(['.', 'data', 'ms_coco'])
+        self._data_dir = os.path.sep.join(['/storage', 'Datasets', 'mscoco'])
         self._data_type = 'train2017' if is_train else 'val2017'
         self._img_path = os.path.join(self._data_dir, self._data_type)
         ann_file = os.path.join(f'{self._data_dir}', 'annotations', f'instances_{self._data_type}.json')
@@ -29,8 +33,12 @@ class MsCocoDataset(Dataset):
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
         self._len = len(self._img_id_vs_annot_dict)
-        self._indexes = list(self._img_id_vs_annot_dict.keys())
         self.transforms = Transforms(conf=config, is_train=is_train)
+        self._img_id_vs_annot_dict = {img_id: annot_check(img_annot)
+                                      for img_id, img_annot in self._img_id_vs_annot_dict.items()}
+        self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
+                                      if len(img_annot) > 0}
+        self._indexes = list(self._img_id_vs_annot_dict.keys())
 
     def __len__(self):
         return self._len
@@ -69,6 +77,7 @@ class MsCocoDataset(Dataset):
         bboxes = np.array([obj_ann['bbox'] for obj_ann in img_annotations])
         category_ids = np.array([obj_ann['category_id'] for obj_ann in img_annotations])
         seg_masks = self._get_seg_map(image.shape[:-1], img_annotations)
-        sample = {'image': image, 'bbox': bboxes, 'category_id': category_ids, 'image_labels': seg_masks}
+        # 'bbox': bboxes, 'category_id': category_ids,
+        sample = {'image': image, 'image_labels': seg_masks}
         sample = self.transforms(sample)
         return sample

@@ -28,7 +28,7 @@ MODEL:
 
 TRAIN:
   N_EPOCHS: 10
-  BATCH_SIZE: 1
+  BATCH_SIZE: 12
   SCHEDULER: 'plateau'
   LR: 1e-2
   LR_FACTOR: 0.2
@@ -36,7 +36,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 12
 
 LOSS:
   NAME: 'DiscriminativeLoss'

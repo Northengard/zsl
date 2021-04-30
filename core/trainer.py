@@ -40,7 +40,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
 
 
 def validation(model, dataloader, loss_fn, device, epoch, cfg):
-    model.evaluation()
+    model.eval()
     num_iter = len(dataloader)
     tq = tqdm(total=num_iter * cfg.TEST.BATCH_SIZE)
     tq.set_description(f'Validation: Epoch {epoch}')
@@ -50,7 +50,6 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
         for itr, batch in enumerate(dataloader):
             images = batch['image']
             images = images.to(device)
-            labels = labels.to(device)
             image_labels = batch['image_labels'].to(device)
 
             output = model(images)
@@ -58,7 +57,7 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
             loss = loss_fn(output, image_labels)
             loss_handler.update(loss.item())
 
-            conf_matr += get_confusion_matix(output, labels)
+            # conf_matr += get_confusion_matix(output, labels)
             tq.update(cfg.TEST.BATCH_SIZE)
             tq.set_postfix(avg_loss=loss_handler.avg)
     tq.close()
