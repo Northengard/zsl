@@ -24,15 +24,15 @@ MODEL:
       - 64
       - 32
     VECTOR_SIZE: 32
-  PRETRAINED: ''
+  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_9.pth'
 
 TRAIN:
-  N_EPOCHS: 10
+  N_EPOCHS: 20
   BATCH_SIZE: 12
   SCHEDULER: 'plateau'
   LR: 1e-2
   LR_FACTOR: 0.2
-  LR_STEPS: [2, 0, 0, 0, 0]
+  LR_STEPS: [2, 0, 0, 0]
   UPDATE_STEP: 1
 
 TEST:
@@ -40,3 +40,9 @@ TEST:
 
 LOSS:
   NAME: 'DiscriminativeLoss'
+  PARAMS: 
+    SCALE_VAR: 1.
+    SCALE_DIST: 1.
+    SCALE_REG: 0.5
+    DELTA_V: 0.5
+    DELTA_D: 3

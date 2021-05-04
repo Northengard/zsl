@@ -24,7 +24,8 @@ def load_weights(model, optimizer, checkpoint_file):
     :return: None
     """
     checkpoint = torch.load(checkpoint_file, map_location='cpu')
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    if optimizer is not None:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     model.load_state_dict(checkpoint['state_dict'])
 
 

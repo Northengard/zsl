@@ -30,18 +30,35 @@ class MsCocoDataset(Dataset):
         self._coco_api = COCO(ann_file)
 
         self._categories = self._coco_api.loadCats(self._coco_api.getCatIds())
+        self._categories = [categ_config for categ_config in self._categories
+                            if categ_config['supercategory'] in config.DATASET.PARAMS.SUPERCATEG]
+        self._categories = [categ_config for categ_config in self._categories
+                            if categ_config['name'] in config.DATASET.PARAMS.CATEG]
+        self._categorie_ids = [categ['id'] for categ in self._categories]
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
-        self._len = len(self._img_id_vs_annot_dict)
         self.transforms = Transforms(conf=config, is_train=is_train)
+
+        # clear categories ids
+        self._img_id_vs_annot_dict = {img_id: self._check_annot_categ(img_annot)
+                                      for img_id, img_annot in self._img_id_vs_annot_dict.items()}
+        self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
+                                      if len(img_annot) > 0}
+
+        # clear annotations without segmentations
         self._img_id_vs_annot_dict = {img_id: annot_check(img_annot)
                                       for img_id, img_annot in self._img_id_vs_annot_dict.items()}
         self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
                                       if len(img_annot) > 0}
+
         self._indexes = list(self._img_id_vs_annot_dict.keys())
+        self._len = len(self._img_id_vs_annot_dict)
 
     def __len__(self):
         return self._len
+
+    def _check_annot_categ(self, img_annot):
+        return [obj for obj in img_annot if type(obj['category_id']) in self._categorie_ids]
 
     def _get_seg_map(self, img_hw, img_annotations):
         semantic_map = np.zeros(self._sample_image_hw)
@@ -80,4 +97,5 @@ class MsCocoDataset(Dataset):
         # 'bbox': bboxes, 'category_id': category_ids,
         sample = {'image': image, 'image_labels': seg_masks}
         sample = self.transforms(sample)
+        sample['idx'] = idx
         return sample

@@ -27,15 +27,27 @@ def test_seg_rcnn(model, device, logger):
 
 def seg_rcnn(config):
     decoder_channels = config.MODEL.PARAMS.DECODER_CHANNELS
-    return MobileNetSegRCNN(decoder_channels)
+    return SegRCNN(decoder_channels)
 
 
-class MobileNetSegRCNN(nn.Module):
-    def __init__(self, decoder_channels=None):
-        super(MobileNetSegRCNN, self).__init__()
-        self.encoder = torchvision.models.mobilenet_v3_large(pretrained=True).features
-        self._encoder_channels = [self.encoder[-1].out_channels, self.encoder[6].out_channels,
-                                  self.encoder[3].out_channels, self.encoder[1].out_channels]
+class SegRCNN(nn.Module):
+    def __init__(self, decoder_channels=None, encoder_type='mobilenet'):
+        super(SegRCNN, self).__init__()
+        self._encoder_forward = {'mobilenet': self._mobilenet_forward,
+                                 'resnet': self._resnet_forward}
+        if encoder_type not in self._encoder_forward.keys():
+            raise AssertionError(f'encoder_type should be one of {self._encoder_forward.keys()}')
+        self._encoder_type = encoder_type
+        if encoder_type == 'mobilenet':
+            self.encoder = torchvision.models.mobilenet_v3_large(pretrained=True).features
+            self._encoder_channels = [self.encoder[-1].out_channels, self.encoder[6].out_channels,
+                                      self.encoder[3].out_channels, self.encoder[1].out_channels]
+        else:
+            self.encoder = torchvision.models.resnet101(pretrained=True)
+            self.encoder.avgpool = torch.nn.Identity()
+            self.encoder.fc = torch.nn.Identity()
+            self._encoder_channels = [list(getattr(self.encoder, f'layer{i}').state_dict().values())[-2].shape[0]
+                                      for i in range(4, 0, -1)]
 
         if decoder_channels is not None:
             self._decoder_channels = decoder_channels
@@ -60,7 +72,7 @@ class MobileNetSegRCNN(nn.Module):
                                                   expand=2))
         self.instance_features = nn.Sequential(*self.instance_features)
 
-    def forward(self, x):
+    def _mobilenet_forward(self, x):
         x = self.encoder[0](x)
         skip_f_1 = self.encoder[1](x)
         x = self.encoder[2](skip_f_1)
@@ -71,16 +83,31 @@ class MobileNetSegRCNN(nn.Module):
         x = self.encoder[7](skip_f_6)
         for block in self.encoder[8:]:
             x = block(x)
+        return skip_f_1, skip_f_3, skip_f_6, x
+
+    def _resnet_forward(self, x):
+        x = self.encoder.conv1(x)
+        x = self.encoder.bn1(x)
+        x = self.encoder.relu(x)
+        x = self.encoder.maxpool(x)
+        skip_f_1 = self.encoder.layer1(x)
+        skip_f_2 = self.encoder.layer2(skip_f_1)
+        skip_f_3 = self.encoder.layer3(skip_f_2)
+        x = self.encoder.layer4(skip_f_3)
+        return skip_f_1, skip_f_2, skip_f_3, x
+
+    def forward(self, x):
+        skip_1, skip_2, skip_3, x = self._encoder_forward[self._encoder_type](x)
 
         for i in range(1, 6):
             x = self.semantic_features[i - 1](x)
             x = func.interpolate(x, scale_factor=2, mode='nearest')
             if i == 2:
-                x = torch.cat((x, skip_f_6), 1)
+                x = torch.cat((x, skip_3), 1)
             elif i == 3:
-                x = torch.cat((x, skip_f_3), 1)
+                x = torch.cat((x, skip_2), 1)
             elif i == 4:
-                x = torch.cat((x, skip_f_1), 1)
+                x = torch.cat((x, skip_1), 1)
 
         instance_embeddings = self.instance_features(x)
 
