@@ -51,9 +51,9 @@ class SegRCNN(nn.Module):
 
         if decoder_channels is not None:
             self._decoder_channels = decoder_channels
-            self._decoder_channels.insert(0, self.encoder[-1].out_channels)
+            self._decoder_channels.insert(0, self._encoder_channels[0])
         else:
-            self._decoder_channels = [self.encoder[-1].out_channels, 512, 256, 128, 64, 32]
+            self._decoder_channels = [self._encoder_channels[0], 512, 256, 128, 64, 32]
 
         self.semantic_features = list()
         for idx, decoder_channels in enumerate(self._decoder_channels[1:]):

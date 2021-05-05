@@ -22,19 +22,22 @@ def annot_check(annots):
 class MsCocoDataset(Dataset):
     def __init__(self, config, is_train):
         self._sample_image_hw = config.DATASET.PARAMS.IMAGE_SIZE[::-1]
+        self._use_rgb = config.DATASET.PARAMS.USE_RGB
 
-        self._data_dir = os.path.sep.join(['/storage', 'Datasets', 'mscoco'])
+        self._data_dir = config.DATASET.PARAMS.DATA_PATH
         self._data_type = 'train2017' if is_train else 'val2017'
         self._img_path = os.path.join(self._data_dir, self._data_type)
         ann_file = os.path.join(f'{self._data_dir}', 'annotations', f'instances_{self._data_type}.json')
         self._coco_api = COCO(ann_file)
 
         self._categories = self._coco_api.loadCats(self._coco_api.getCatIds())
-        self._categories = [categ_config for categ_config in self._categories
-                            if categ_config['supercategory'] in config.DATASET.PARAMS.SUPERCATEG]
-        self._categories = [categ_config for categ_config in self._categories
-                            if categ_config['name'] in config.DATASET.PARAMS.CATEG]
-        self._categorie_ids = [categ['id'] for categ in self._categories]
+        if len(config.DATASET.PARAMS.SUPERCATEG) > 0:
+            self._categories = [categ_config for categ_config in self._categories
+                                if categ_config['supercategory'] in config.DATASET.PARAMS.SUPERCATEG]
+        if len(config.DATASET.PARAMS.CATEG) > 0:
+            self._categories = [categ_config for categ_config in self._categories
+                                if categ_config['name'] in config.DATASET.PARAMS.CATEG]
+        self._categories_ids = [categ['id'] for categ in self._categories]
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
         self.transforms = Transforms(conf=config, is_train=is_train)
@@ -57,8 +60,27 @@ class MsCocoDataset(Dataset):
     def __len__(self):
         return self._len
 
+    @property
+    def categories_ids(self):
+        return self._categories_ids
+
+    def get_image(self, idx, return_meta=False):
+        img_id = self._indexes[idx]
+        # self._coco_api.loadImgs returns list of images but only one image is required,
+        # so unpack it form list with one element
+        # img_dict comp: 'license', 'file_name', 'coco_url', 'height', 'width', 'date_captured', 'flickr_url', 'id'
+        img_dict = self._coco_api.loadImgs(img_id)[0]
+
+        image = cv2.imread(os.path.join(self._img_path, img_dict['file_name']))
+        if self._use_rgb:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if return_meta:
+            return image, img_dict, img_id
+        else:
+            return image
+
     def _check_annot_categ(self, img_annot):
-        return [obj for obj in img_annot if type(obj['category_id']) in self._categorie_ids]
+        return [obj for obj in img_annot if obj['category_id'] in self._categories_ids]
 
     def _get_seg_map(self, img_hw, img_annotations):
         semantic_map = np.zeros(self._sample_image_hw)
@@ -81,13 +103,8 @@ class MsCocoDataset(Dataset):
         return np.stack([semantic_map, instance_map], 2)
 
     def __getitem__(self, idx):
-        img_id = self._indexes[idx]
-        # self._coco_api.loadImgs returns list of images but only one image is required,
-        # so unpack it form list with one element
-        # img_dict comp: 'license', 'file_name', 'coco_url', 'height', 'width', 'date_captured', 'flickr_url', 'id'
-        img_dict = self._coco_api.loadImgs(img_id)[0]
+        image, img_dict, img_id = self.get_image(idx, return_meta=True)
 
-        image = cv2.imread(os.path.join(self._img_path, img_dict['file_name']))
         # img_annotations: list of dicts
         # with keys: 'segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'
         img_annotations = self._img_id_vs_annot_dict[img_id]
