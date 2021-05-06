@@ -1,7 +1,7 @@
 SYSTEM:
   LOG_DIR: "logs"
   SNAPSHOT_DIR: 'snapshots'
-  WORKERS: 2
+  WORKERS: 6
   NGPUS: 1
   SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
   PRINT_FREQ: 100
@@ -10,6 +10,7 @@ SYSTEM:
 DATASET:
   NAME: "mscoco"
   PARAMS:
+    DATA_PATH: 'data/ms_coco'
     IMAGE_SIZE:
       - 640
       - 480
@@ -19,16 +20,16 @@ MODEL:
   PARAMS:
     DECODER_CHANNELS:
       - 512
+      - 512
       - 256
       - 128
       - 64
-      - 32
-    VECTOR_SIZE: 32
-  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_9.pth'
+    VECTOR_SIZE: 64
+  PRETRAINED: ''
 
 TRAIN:
   N_EPOCHS: 20
-  BATCH_SIZE: 12
+  BATCH_SIZE: 10
   SCHEDULER: 'plateau'
   LR: 1e-2
   LR_FACTOR: 0.2
@@ -36,13 +37,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 12
+  BATCH_SIZE: 10
 
 LOSS:
-  NAME: 'DiscriminativeLoss'
-  PARAMS: 
-    SCALE_VAR: 1.
-    SCALE_DIST: 1.
-    SCALE_REG: 0.5
-    DELTA_V: 0.5
-    DELTA_D: 3
+  NAME: 'SegArcFace'

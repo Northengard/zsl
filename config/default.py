@@ -45,6 +45,7 @@ _C.TEST.SIM_THRESHOLD = 0.6
 _C.LOSS = CfgNode()
 _C.LOSS.NAME = 'ContrastiveLoss'
 _C.LOSS.PARAMS = CfgNode(new_allowed=True)
+_C.LOSS.SIZE_AVERAGE = False
 
 
 def update_config(cfg, args):
