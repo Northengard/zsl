@@ -12,9 +12,16 @@ class SegArcFace(nn.Module):
         self.size_average = config.LOSS.SIZE_AVERAGE
 
     def forward(self, preds, labels):
-        batch_size = preds.shape[0]
-        mask = labels > 0
-        loss = self.criterion(preds[mask], labels[labels > 0])
+        semantic_emb, instance_emb = preds
+        semantic_gt = labels[:, 0]
+        instance_gt = labels[:, 1]
+        batch_size = semantic_emb.shape[0]
+
+        mask = semantic_gt > 0
+        loss = self.criterion(preds[mask], semantic_gt[mask])
+
+        mask = instance_gt > 0
+        loss += self.criterion(instance_emb[mask], instance_emb[mask])
 
         if self.size_average:
             loss /= batch_size
