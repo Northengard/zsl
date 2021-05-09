@@ -9,3 +9,6 @@ pytorch_metric_learning
 matplotlib
 seaborn
 pandas
+scikit-learning
+mmcv
+mmdet

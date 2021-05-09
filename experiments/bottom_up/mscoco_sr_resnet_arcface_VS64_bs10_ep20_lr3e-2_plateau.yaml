@@ -1,7 +1,7 @@
 SYSTEM:
   LOG_DIR: "logs"
   SNAPSHOT_DIR: 'snapshots'
-  WORKERS: 6
+  WORKERS: 8
   NGPUS: 1
   SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
   PRINT_FREQ: 100
@@ -10,7 +10,13 @@ SYSTEM:
 DATASET:
   NAME: "mscoco"
   PARAMS:
-    DATA_PATH: 'data/ms_coco'
+    DATA_PATH: '/storage/Datasets/mscoco'
+    SUPERCATEG:
+      - 'vehicle'
+      - 'outdoor'
+      - 'animal'
+      - 'furniture'
+      - 'person'
     IMAGE_SIZE:
       - 640
       - 480
@@ -29,7 +35,7 @@ MODEL:
 
 TRAIN:
   N_EPOCHS: 20
-  BATCH_SIZE: 10
+  BATCH_SIZE: 8
   SCHEDULER: 'plateau'
   LR: 1e-2
   LR_FACTOR: 0.2
@@ -37,7 +43,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 10
+  BATCH_SIZE: 8
 
 LOSS:
   NAME: 'SegArcFace'
