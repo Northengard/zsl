@@ -37,7 +37,8 @@ class MsCocoDataset(Dataset):
         if len(config.DATASET.PARAMS.CATEG) > 0:
             self._categories = [categ_config for categ_config in self._categories
                                 if categ_config['name'] in config.DATASET.PARAMS.CATEG]
-        self._categories_ids = [categ['id'] for categ in self._categories]
+        self._categories_repr = {categ['id']: categ['name'] for categ in self._categories}
+        self._categories_ids = list(self._categories_repr.keys())
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
         self.transforms = Transforms(conf=config, is_train=is_train)
@@ -63,6 +64,14 @@ class MsCocoDataset(Dataset):
     @property
     def categories_ids(self):
         return self._categories_ids
+
+    @property
+    def categories(self):
+        return self._categories_repr
+
+    @property
+    def num_classes(self):
+        return len(self._categories_ids)
 
     def get_image(self, idx, return_meta=False):
         img_id = self._indexes[idx]
