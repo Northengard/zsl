@@ -9,9 +9,14 @@ from .transformations import Transforms, get_pad
 from .common import wrap_dataset
 
 
+def collate_fn(batch):
+    batch = {key: [sample for sample in batch] for key in batch[0]}
+    return batch
+
+
 def mscoco(config, is_train):
     dataset = MsCocoDataset(config=config, is_train=is_train)
-    dataloader = wrap_dataset(dataset=dataset, config=config, is_train=is_train)
+    dataloader = wrap_dataset(dataset=dataset, config=config, is_train=is_train, collate_fn=collate_fn)
     return dataloader
 
 
@@ -121,7 +126,9 @@ class MsCocoDataset(Dataset):
         category_ids = np.array([obj_ann['category_id'] for obj_ann in img_annotations])
         seg_masks = self._get_seg_map(image.shape[:-1], img_annotations)
         # 'bbox': bboxes, 'category_id': category_ids,
-        sample = {'image': image, 'image_labels': seg_masks}
+        sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes}
         sample = self.transforms(sample)
+        sample.pop('bbox')
+        sample['targets'] = {cat_id: bboxes[obj_id] for obj_id, cat_id in enumerate(category_ids)}
         sample['idx'] = idx
         return sample

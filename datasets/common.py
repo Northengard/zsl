@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision
 
 
-def wrap_dataset(dataset, config, is_train):
+def wrap_dataset(dataset, config, is_train, collate_fn=None):
     workers = config.SYSTEM.WORKERS
     if is_train:
         batch_size = config.TRAIN.BATCH_SIZE
@@ -19,7 +19,8 @@ def wrap_dataset(dataset, config, is_train):
                             num_workers=workers,
                             shuffle=is_train,
                             pin_memory=True,
-                            drop_last=True)
+                            drop_last=True,
+                            collate_fn=collate_fn)
     return dataloader
 
 

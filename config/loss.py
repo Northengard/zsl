@@ -13,4 +13,8 @@ _DISCRIMINATIVE.DELTA_D = 3
 _SEGARCFACE = CfgNode()
 _SEGARCFACE.NUM_CLS = 80
 
-LOSS_DEFAULTS = {'ContrastiveLoss': _CONSTRUCT_LOSS, 'DiscriminativeLoss': _DISCRIMINATIVE, 'SegArcFace': _SEGARCFACE}
+
+LOSS_DEFAULTS = {'ContrastiveLoss': _CONSTRUCT_LOSS,
+                 'DiscriminativeLoss': _DISCRIMINATIVE,
+                 'SegArcFace': _SEGARCFACE,
+                 'ArcFaceLoss': _SEGARCFACE}

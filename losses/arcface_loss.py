@@ -29,13 +29,13 @@ class SegArcFace(nn.Module):
 
 
 # loss for mmdet
-@LOSSES.register_module()
 class ArcFaceLoss(torch.nn.Module):
-    def __init__(self, num_classes, embedding_size):
+    def __init__(self, config):
         super(ArcFaceLoss, self).__init__()
-        self.num_classes = num_classes
-        self.embedding_size = embedding_size
-        self.criterion = losses.ArcFaceLoss(num_classes=num_classes, embedding_size=embedding_size)
+        self.num_classes = config.LOSS.PARAMS.NUM_CLS
+        self.embedding_size = config.MODEL.PARAMS.VECTOR_SIZE
+        self.criterion = losses.ArcFaceLoss(num_classes=self.num_classes, embedding_size=self.embedding_size)
+        self.size_average = config.LOSS.SIZE_AVERAGE
 
     def forward(self, preds, labels):
         batch_size = preds.shape[0]

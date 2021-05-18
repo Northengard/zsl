@@ -1,6 +1,7 @@
 import os
 import argparse
 import pprint
+import setuptools
 
 from numpy import inf
 
@@ -74,8 +75,11 @@ def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir
               device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
 
         logger.info(f'start to validate {epoch}')
-        val_output = validation(model=model, dataloader=val_loader, device=device,
-                                loss_fn=loss, epoch=epoch, cfg=cfg)
+        if cfg.TRAIN.VAL_REQUIRED:
+            val_output = validation(model=model, dataloader=val_loader, device=device,
+                                    loss_fn=loss, epoch=epoch, cfg=cfg)
+        else:
+            val_output = {cfg.LOSS.NAME: best_loss}
         if cfg.TRAIN.SCHEDULER != 'multistep':
             scheduler.step(val_output[cfg.LOSS.NAME])
         if proc_device == 0:

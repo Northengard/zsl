@@ -16,12 +16,17 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
     model.train()
     for itr, batch in enumerate(dataloader):
         images = batch['image']
-        images = images.to(device)
+        images = [image.to(device) for image in images]
         # labels = labels.to(device)
-        image_labels = batch['image_labels'].to(device)
 
-        output = model(images)
-        loss = loss_fn(output, image_labels)
+        if cfg.TRAIN.IN_MODELL_LOSS:
+            targets = batch['targets']
+            targets = [{cat_id: bboxes.to(device) for cat_id, bboxes in target.items()} for target in targets]
+            output, loss = model(images, targets)
+        else:
+            image_labels = batch['image_labels'].to(device)
+            output = model(images)
+            loss = loss_fn(output, image_labels)
         loss.backward()
         loss_handler.update(loss.item())
         if (itr + 1) % cfg.TRAIN.UPDATE_STEP == 0:
