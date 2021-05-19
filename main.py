@@ -120,7 +120,10 @@ def main(proc_device, args, cfg):
 
     logger.info(f"Using {proc_device} device")
 
-    loss = getattr(losses, cfg.LOSS.NAME)(cfg)
+    if cfg.TRAIN.IN_MODELL_LOSS:
+        loss = None
+    else:
+        loss = getattr(losses, cfg.LOSS.NAME)(cfg)
 
     model = getattr(models, cfg.MODEL.NAME)(cfg)
     optimizer = torch.optim.SGD(model.parameters(), lr=cfg.TRAIN.LR) if is_train else None

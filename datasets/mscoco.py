@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import cv2
+import torch
 from pycocotools.coco import COCO
 
 from torch.utils.data import Dataset
@@ -10,7 +11,7 @@ from .common import wrap_dataset
 
 
 def collate_fn(batch):
-    batch = {key: [sample for sample in batch] for key in batch[0]}
+    batch = {key: [sample[key] for sample in batch] for key in batch[0]}
     return batch
 
 
@@ -44,6 +45,7 @@ class MsCocoDataset(Dataset):
                                 if categ_config['name'] in config.DATASET.PARAMS.CATEG]
         self._categories_repr = {categ['id']: categ['name'] for categ in self._categories}
         self._categories_ids = list(self._categories_repr.keys())
+        self._cat_maper = dict(zip(self._categories_ids, list(range(1, len(self._categories_ids) + 1))))
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
         self.transforms = Transforms(conf=config, is_train=is_train)
@@ -123,12 +125,17 @@ class MsCocoDataset(Dataset):
         # with keys: 'segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'
         img_annotations = self._img_id_vs_annot_dict[img_id]
         bboxes = np.array([obj_ann['bbox'] for obj_ann in img_annotations])
-        category_ids = np.array([obj_ann['category_id'] for obj_ann in img_annotations])
+        bboxes[:, 2:] += bboxes[:, :2]
+        # clear objects with bad boxes
+        obj_mask = (bboxes[:, 2:] < bboxes[:, :2]).sum(1).astype(bool)
+        bboxes = bboxes[~obj_mask]
+        category_ids = np.array([self._cat_maper[obj_ann['category_id']]
+                                 for obj_id, obj_ann in enumerate(img_annotations) if not obj_mask[obj_id]])
         seg_masks = self._get_seg_map(image.shape[:-1], img_annotations)
         # 'bbox': bboxes, 'category_id': category_ids,
         sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes}
         sample = self.transforms(sample)
+        sample['targets'] = {'boxes': sample['bbox'], 'labels': torch.from_numpy(category_ids).to(torch.int64)}
         sample.pop('bbox')
-        sample['targets'] = {cat_id: bboxes[obj_id] for obj_id, cat_id in enumerate(category_ids)}
         sample['idx'] = idx
         return sample

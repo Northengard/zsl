@@ -29,6 +29,9 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
     """
 
     labels = torch.cat(labels, dim=0)
+    print(torch.unique(labels))
+    print(labels.shape)
+    print(class_embeddings.shape)
     regression_targets = torch.cat(regression_targets, dim=0)
 
     classification_loss = embedding_loss(class_embeddings, labels)
@@ -38,7 +41,7 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
     # advanced indexing
     sampled_pos_inds_subset = torch.where(labels > 0)[0]
     labels_pos = labels[sampled_pos_inds_subset]
-    N, num_classes = class_embeddings.shape
+    N = class_embeddings.shape[0]
     box_regression = box_regression.reshape(N, box_regression.size(-1) // 4, 4)
 
     box_loss = F.smooth_l1_loss(
@@ -47,7 +50,7 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
         beta=1 / 9,
         reduction='sum',
     )
-    box_loss = box_loss / labels.numel()
+    box_loss = box_loss / (labels.numel() + 1e-6)
 
     return classification_loss, box_loss
 

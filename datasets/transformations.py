@@ -18,7 +18,7 @@ class HorizontalFlip:
 
     @staticmethod
     def flip_coords(coords, img_w):
-        coords[:, 0] = img_w - coords[:, 0]
+        coords[:, 2], coords[:, 0] = img_w - coords[:, 0], img_w - coords[:, 2]
         return coords
 
     def __call__(self, sample):
@@ -179,12 +179,16 @@ class ColorTransform:
 # CHANGE SIZE
 def get_pad(nn_h, nn_w, img_h, img_w):
     nn_asp_ratio = nn_h / nn_w
-    if (img_h / img_w) > nn_asp_ratio:
+    img_ratio = img_h / img_w
+    if img_ratio > nn_asp_ratio:
         pad_w = int(img_h / nn_asp_ratio - img_w)
         pad_h = 0
-    else:
+    elif img_ratio < nn_asp_ratio:
         pad_w = 0
         pad_h = int(img_w * nn_asp_ratio - img_h)
+    else:
+        pad_h = 0
+        pad_w = 0
     return 0, pad_h, 0, pad_w
 
 

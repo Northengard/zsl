@@ -61,7 +61,7 @@ def get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function)
                     box_batch_size_per_image, box_positive_fraction,
                     bbox_reg_weights, box_score_thresh,
                     box_nms_thresh, box_detections_per_img,
-                    embeddings_loss_function)
+                    embeddings_loss_function=embeddings_loss_function)
 
 
 class TopDownRCNN(nn.Module):
@@ -91,6 +91,7 @@ class TopDownRCNN(nn.Module):
         features = self.backbone(images.tensors)
         if isinstance(features, torch.Tensor):
             features = OrderedDict([('0', features)])
+            print('isinstance')
         proposals, proposal_losses = self.rpn(images, features, targets)
 
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)

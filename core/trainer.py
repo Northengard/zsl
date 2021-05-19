@@ -22,7 +22,11 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
         if cfg.TRAIN.IN_MODELL_LOSS:
             targets = batch['targets']
             targets = [{cat_id: bboxes.to(device) for cat_id, bboxes in target.items()} for target in targets]
-            output, loss = model(images, targets)
+            output, loss_dict = model(images, targets)
+            logger.info(loss_dict)
+            loss = torch.stack(list(loss_dict.values()))
+            loss[0] *= 0.3
+            loss = torch.sum(loss)
         else:
             image_labels = batch['image_labels'].to(device)
             output = model(images)
@@ -40,6 +44,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
 
         if sheduler:
             sheduler.step()
+        tq.set_postfix(avg_loss=loss_handler.avg)
         tq.update(cfg.TRAIN.BATCH_SIZE)
     tq.close()
 

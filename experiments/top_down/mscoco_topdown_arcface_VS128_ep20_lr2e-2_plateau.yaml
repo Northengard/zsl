@@ -10,7 +10,7 @@ SYSTEM:
 DATASET:
   NAME: "mscoco"
   PARAMS:
-    DATA_PATH: 'data/ms_coco'
+    DATA_PATH: '/storage/Datasets/mscoco'
     IMAGE_SIZE:
       - 1280
       - 960
@@ -23,7 +23,7 @@ MODEL:
 
 TRAIN:
   N_EPOCHS: 20
-  BATCH_SIZE: 1
+  BATCH_SIZE: 4
   SCHEDULER: 'plateau'
   VAL_REQUIRED: false
   IN_MODELL_LOSS: true
@@ -33,7 +33,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 1
+  BATCH_SIZE: 4
 
 LOSS:
   NAME: 'ArcFaceLoss'
