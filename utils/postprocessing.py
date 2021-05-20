@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import torch
 from sklearn.cluster import MeanShift
@@ -25,7 +26,6 @@ class BottomUpPostprocessing:
 
     @staticmethod
     def _get_bbox(coord_array):
-        print(coord_array.shape)
         top = coord_array[coord_array[:, 0].argmin()]
         left = coord_array[coord_array[:, 1].argmin()]
 
@@ -48,22 +48,32 @@ class BottomUpPostprocessing:
                 coord_arrays.append(torch.stack([torch.arange(map_w, device=self.device), amax[img_id]]).T[mask])
         return coord_arrays
 
-    def get_position(self, values_map, target_value, get_bbox=True):
+    def get_position(self, values_map, target_value, score_map, get_bbox=True):
         target_val_mask = (values_map == target_value).to(torch.int)
         if target_val_mask.sum() > 0:
             # in BxYX format
-            top_border_coords = self._get_top_border_coords(target_val_mask)
-            bottom_border_coords = self._get_top_border_coords(target_val_mask.flip(dims=(1,)), is_reversed=True)
-            batch_coord_array = [torch.cat((top_border_coords[in_batch_id], bottom_border_coords[in_batch_id]))
-                                 for in_batch_id in range(len(top_border_coords))]
+            scores = list()
+            batch_coord_array = list()
+            for batch_id, mask in enumerate(target_val_mask.cpu().numpy()):
+                contours = cv2.findContours((mask * 255).astype('uint8'),
+                                            cv2.RETR_LIST,
+                                            cv2.CHAIN_APPROX_SIMPLE)[0]
+                batch_coord_array.extend(contours)
+                for contour in contours:
+                    scores.append(score_map[batch_id][contour].mean().cpu().item)
+            # top_border_coords = self._get_top_border_coords(target_val_mask)
+            # bottom_border_coords = self._get_top_border_coords(target_val_mask.flip(dims=(1,)), is_reversed=True)
+            # batch_coord_array = [torch.cat((top_border_coords[in_batch_id], bottom_border_coords[in_batch_id]))
+            #                      for in_batch_id in range(len(top_border_coords))]
 
             if not get_bbox:
-                return batch_coord_array
+                return batch_coord_array, scores
             else:
                 # extreme points
-                return [self._get_bbox(coord_array) for coord_array in batch_coord_array]
+                return [self._get_bbox(coord_array) for coord_array in batch_coord_array
+                        if coord_array.shape[0] > 0], scores
         else:
-            return list()
+            return list(), list()
 
     def __call__(self, semantic_out, instance_out=None, true_labels=None, with_bbox=False, method=0):
         if true_labels is not None:
@@ -72,7 +82,8 @@ class BottomUpPostprocessing:
                      for class_id in self.classes_ids if self._class_counters[class_id] > 0}
         batch_size = semantic_out.shape[0]
 
-        batch_classes_and_bboxes = dict()
+        scores = dict()
+        batch_classes_and_pos = dict()
         if method == 0:
             seg_map = torch.zeros(batch_size, *semantic_out.shape[-2:], device=self.device)
             for class_id, centroid in centroids.items():
@@ -80,27 +91,33 @@ class BottomUpPostprocessing:
                 mask = distances < self.delta
                 seg_map[mask] = class_id
 
-                if with_bbox:
-                    # instance
-                    if instance_out is not None:
-                        for batch_id in range(batch_size):
-                            instance_map = torch.zeros(1, *semantic_out.shape[-2:], device=semantic_out.device)
-                            # TOOOO LOOONG
-                            clusterizer = MeanShift(bandwidth=self.delta, cluster_all=True, n_jobs=8)
-                            instance_clusters = instance_out[batch_id].permute(1, 2, 0)[mask[batch_id]].cpu().numpy()
-                            instance_clusters = clusterizer.fit_predict(instance_clusters)
-                            instance_clusters += 1
-                            num_instances = np.unique(instance_clusters)
-                            instance_map[mask] = torch.from_numpy(instance_clusters).to(self.device).to(torch.float32)
-                            class_bboxes = list()
-                            for instance_id in num_instances:
-                                class_bboxes.append(self.get_position(instance_map, instance_id, get_bbox=True)[0])
-                            batch_classes_and_bboxes[batch_id][class_id] = class_bboxes
-                    else:
-                        for batch_id in range(batch_size):
-                            pos = self.get_position(seg_map, class_id, get_bbox=True)
-                            if len(pos) > 0:
-                                batch_classes_and_bboxes[class_id] = pos
+                # if with_bbox:
+                #     # instance
+                # if instance_out is not None:
+                #     for batch_id in range(batch_size):
+                #         instance_map = torch.zeros(1, *semantic_out.shape[-2:], device=semantic_out.device)
+                #         # TOOOO LOOONG
+                #         clusterizer = MeanShift(bandwidth=self.delta, cluster_all=True, n_jobs=8)
+                #         instance_clusters = instance_out[batch_id].permute(1, 2, 0)[mask[batch_id]].cpu().numpy()
+                #         instance_clusters = clusterizer.fit_predict(instance_clusters)
+                #         instance_clusters += 1
+                #         num_instances = np.unique(instance_clusters)
+                #         instance_map[mask] = torch.from_numpy(instance_clusters).to(self.device).to(torch.float32)
+                #         scores = list()
+                #         class_bboxes = list()
+                #         for instance_id in num_instances:
+                #             positions, pos_scores = self.get_position(instance_map, instance_id, distances,
+                #                                                       get_bbox=True)
+                #             scores.append(pos_scores)
+                #             class_bboxes.append(positions)
+                #         batch_classes_and_pos[batch_id][class_id] = class_bboxes
+                # else:
+                for batch_id in range(batch_size):
+                    pos, pos_scores = self.get_position(seg_map, class_id, distances, get_bbox=with_bbox)
+                    if len(pos) > 0:
+                        batch_classes_and_pos[class_id] = pos
+                        scores[class_id] = pos_scores
+
         else:
             clusterizer = MeanShift(bandwidth=self.delta, seeds=torch.stack(list(centroids.values())).numpy(),
                                     cluster_all=False)
@@ -112,4 +129,4 @@ class BottomUpPostprocessing:
             seg_map = torch.from_numpy(seg_map)
             seg_map = torch.clamp(seg_map, min=0)
 
-        return seg_map, batch_classes_and_bboxes
+        return seg_map, batch_classes_and_pos, scores

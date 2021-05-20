@@ -80,7 +80,7 @@ class MsCocoDataset(Dataset):
     def num_classes(self):
         return len(self._categories_ids)
 
-    def get_image(self, idx, return_meta=False):
+    def get_image(self, idx, get_meta=False):
         img_id = self._indexes[idx]
         # self._coco_api.loadImgs returns list of images but only one image is required,
         # so unpack it form list with one element
@@ -90,7 +90,7 @@ class MsCocoDataset(Dataset):
         image = cv2.imread(os.path.join(self._img_path, img_dict['file_name']))
         if self._use_rgb:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if return_meta:
+        if get_meta:
             return image, img_dict, img_id
         else:
             return image
@@ -100,11 +100,9 @@ class MsCocoDataset(Dataset):
 
     def _get_seg_map(self, img_hw, img_annotations):
         semantic_map = np.zeros(self._sample_image_hw)
-        instance_map = np.zeros(self._sample_image_hw)
         _, pad_h, _, pad_w = get_pad(img_h=img_hw[0], img_w=img_hw[1],
                                      nn_h=self._sample_image_hw[0], nn_w=self._sample_image_hw[1])
         scale_coef = self._sample_image_hw[0] / (img_hw[0] + pad_h)
-        instance_id = 1.
         for obj in img_annotations:
             contours = obj['segmentation']
             for contour in contours:
@@ -114,12 +112,10 @@ class MsCocoDataset(Dataset):
                 contour = contour.round().astype(int)
                 mask = cv2.drawContours(mask, [contour], contourIdx=-1, color=255, thickness=-1).astype(bool)
                 semantic_map[mask] = obj['category_id']
-                instance_map[mask] = instance_id
-                instance_id += 1
-        return np.stack([semantic_map, instance_map], 2)
+        return semantic_map
 
     def __getitem__(self, idx):
-        image, img_dict, img_id = self.get_image(idx, return_meta=True)
+        image, img_dict, img_id = self.get_image(idx, get_meta=True)
 
         # img_annotations: list of dicts
         # with keys: 'segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'

@@ -53,7 +53,7 @@ def get_iou_metrics(confusion_matrix):
     freq = gt_condition / total_sum
     freq_mask = freq > 0
     fwavacc = (freq[freq_mask] * iu[freq_mask]).sum()
-    return {'overall_accuracy': total_acc,
-            'mean_accuracy': mean_cls_acc,
-            'freqW_acc': fwavacc,
-            'mean_iou': mean_iu}
+    return {'overall_accuracy': float(total_acc),
+            'mean_accuracy': float(mean_cls_acc),
+            'freqW_acc': float(fwavacc),
+            'mean_iou': float(mean_iu)}

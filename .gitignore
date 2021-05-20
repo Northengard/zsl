@@ -3,4 +3,5 @@ data
 logs
 snapshots
 *.ipynb
+*.json
 __pycache__

@@ -26,11 +26,8 @@ class DiscriminativeLoss(nn.Module):
             embedding_b = embedding[b]  # (embed_dim, H, W)
             seg_gt_b = seg_gt[b]
 
-            # print(f'seg_gt_b shape: {seg_gt_b.shape}')
-
             labels = torch.unique(seg_gt_b)
-            labels = labels[labels != 0]
-            # print(f'labels: {labels}')
+            labels = labels[labels > -1]
             num_classes = len(labels)
             if num_classes == 0:
                 # please refer to issue here: https://github.com/harryhan618/LaneNet/issues/12
@@ -52,8 +49,9 @@ class DiscriminativeLoss(nn.Module):
                 centroid_mean.append(mean_i)
 
                 # ---------- var_loss -------------
-                var_loss = var_loss + torch.mean(func.relu(
-                    torch.norm(embedding_i - mean_i.reshape(self.embed_dim, 1), dim=0) - self.delta_v) ** 2) / num_classes
+                if label_idx > 0:
+                    var_loss += torch.mean(func.relu(torch.norm(embedding_i - mean_i.reshape(self.embed_dim, 1), dim=0)
+                                                     - self.delta_v) ** 2) / (num_classes - 1)
             centroid_mean = torch.stack(centroid_mean)  # (n_lane, embed_dim)
 
             if num_classes > 1:
@@ -69,7 +67,7 @@ class DiscriminativeLoss(nn.Module):
                             num_classes * (num_classes - 1)) / 2
 
             # reg_loss is not used in original paper
-            # reg_loss = reg_loss + torch.mean(torch.norm(centroid_mean, dim=1))
+            reg_loss = reg_loss + torch.mean(torch.norm(centroid_mean, dim=1))
 
         var_loss = var_loss / batch_size
         dist_loss = dist_loss / batch_size
@@ -79,11 +77,8 @@ class DiscriminativeLoss(nn.Module):
         return {'total': total_loss, 'var': var_loss, 'dist': dist_loss, 'reg': reg_loss}
 
     def forward(self, model_out, gt):
-        semantic_emb, instance_emb = model_out
-        semantic_gt = gt[:, 0]#.unsqueeze(1)
-        instance_gt = gt[:, 1]#.unsqueeze(1)
+        semantic_gt = gt[:, 0]
 
-        sem_loss = self._forward(semantic_emb, semantic_gt)
-        inst_loss = self._forward(instance_emb, instance_gt)
-        loss = sem_loss['total'] + inst_loss['total']
+        sem_loss = self._forward(model_out, semantic_gt)
+        loss = sem_loss['total']
         return loss

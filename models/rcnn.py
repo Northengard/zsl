@@ -65,12 +65,12 @@ class SegRCNN(nn.Module):
                                                       expand=2))
         self.semantic_features = nn.Sequential(*self.semantic_features)
 
-        self.instance_features = list()
-        self.instance_features.append(ResNetBlock(in_chn=self._decoder_channels[-1],
-                                                  out_chn=self._decoder_channels[-1],
-                                                  stride=1,
-                                                  expand=2))
-        self.instance_features = nn.Sequential(*self.instance_features)
+        self.last_block = list()
+        self.last_block.append(ResNetBlock(in_chn=self._decoder_channels[-1],
+                                           out_chn=self._decoder_channels[-1],
+                                           stride=1,
+                                           expand=2))
+        self.last_block = nn.Sequential(*self.last_block)
 
     def _mobilenet_forward(self, x):
         x = self.encoder[0](x)
@@ -109,6 +109,6 @@ class SegRCNN(nn.Module):
             elif i == 4:
                 x = torch.cat((x, skip_1), 1)
 
-        instance_embeddings = self.instance_features(x)
+        x = self.last_block(x)
 
-        return x, instance_embeddings
+        return x
