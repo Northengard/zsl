@@ -2,28 +2,23 @@ import torch
 import numpy as np
 
 
-def get_confision_matrix(label, pred, num_class, ignore=-1, seg_threshold=0.5):
+def get_confusion_matrix(label, pred, num_class, ignore=-1):
     """
     calculate the confusion matix by given label and pred
     """
     device = pred.device
-    threshold = torch.tensor(seg_threshold, device=device)
-    seg_pred = torch.ge(pred, threshold).to(torch.int32)
-    seg_gt = torch.ge(label, threshold).to(torch.int32)
 
-    ignore_index = seg_gt != ignore
-    seg_gt = seg_gt[ignore_index]
-    seg_pred = seg_pred[ignore_index]
+    ignore_index = label != ignore
+    seg_gt = label[ignore_index].to(torch.int32)
+    seg_pred = pred[ignore_index].to(torch.int32)
 
-    index = (seg_gt * num_class + seg_pred)
-    label_count = torch.bincount(index)
-    confusion_matrix = torch.zeros((num_class, num_class), device=device)
-
-    for i_label in range(num_class):
-        for i_pred in range(num_class):
-            cur_idx = i_label * num_class + i_pred
-            if cur_idx < len(label_count):
-                confusion_matrix[i_label, i_pred] = label_count[cur_idx]
+    # 1 + because 0 - background, + actual classes
+    index = (seg_gt * (num_class + 1) + seg_pred)
+    confusion_matrix = torch.bincount(index)
+    confusion_matrix = torch.cat([confusion_matrix,
+                                  torch.zeros((num_class + 1) * (num_class + 1) - confusion_matrix.shape[0],
+                                              device=device)])
+    confusion_matrix = torch.reshape(confusion_matrix, ((num_class + 1), (num_class + 1)))
     return confusion_matrix
 
 

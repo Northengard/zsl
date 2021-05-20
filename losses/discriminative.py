@@ -66,7 +66,8 @@ class DiscriminativeLoss(nn.Module):
                 dist_loss = dist_loss + torch.sum(func.relu(-dist + self.delta_d) ** 2) / (
                             num_classes * (num_classes - 1)) / 2
 
-            # reg_loss is not used in original paper
+            # reg_loss is used in original paper with very small coef like 1e-3.
+            # Should use with patience
             reg_loss = reg_loss + torch.mean(torch.norm(centroid_mean, dim=1))
 
         var_loss = var_loss / batch_size
@@ -77,8 +78,6 @@ class DiscriminativeLoss(nn.Module):
         return {'total': total_loss, 'var': var_loss, 'dist': dist_loss, 'reg': reg_loss}
 
     def forward(self, model_out, gt):
-        semantic_gt = gt[:, 0]
-
-        sem_loss = self._forward(model_out, semantic_gt)
+        sem_loss = self._forward(model_out, gt)
         loss = sem_loss['total']
         return loss

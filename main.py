@@ -74,11 +74,13 @@ def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir
               sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
               device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
 
-        logger.info(f'start to validate {epoch}')
         if cfg.TRAIN.VAL_REQUIRED:
+            logger.info(f'start to validate {epoch}')
             val_output = validation(model=model, dataloader=val_loader, device=device,
                                     loss_fn=loss, epoch=epoch, cfg=cfg)
+            logger.info(f'validation results:\n{val_output}')
         else:
+            logger.info('validation skipped, cfg.TRAIN.VAL_REQUIRED is False')
             val_output = {cfg.LOSS.NAME: best_loss}
         if cfg.TRAIN.SCHEDULER != 'multistep':
             scheduler.step(val_output[cfg.LOSS.NAME])

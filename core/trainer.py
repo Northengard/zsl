@@ -1,7 +1,9 @@
+import time
 import torch
 from tqdm import tqdm
 from utils import AverageMeter, get_learning_rate
-from metrics import get_confusion_matix, prec_rec_acc
+from metrics.intersection import get_confusion_matrix, get_iou_metrics
+from utils.postprocessing import BottomUpPostprocessing
 
 
 def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board_writer, epoch, cfg):
@@ -28,7 +30,8 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
             loss[0] *= 0.3
             loss = torch.sum(loss)
         else:
-            image_labels = batch['image_labels'].to(device)
+            image_labels = torch.stack(batch['image_labels']).to(device)
+            images = torch.stack(images)
             output = model(images)
             loss = loss_fn(output, image_labels)
         loss.backward()
@@ -55,22 +58,29 @@ def validation(model, dataloader, loss_fn, device, epoch, cfg):
     tq = tqdm(total=num_iter * cfg.TEST.BATCH_SIZE)
     tq.set_description(f'Validation: Epoch {epoch}')
     loss_handler = AverageMeter()
-    conf_matr = torch.zeros(2, 2)
+    num_class = dataloader.dataset.num_classes
     with torch.no_grad():
+        postproc = BottomUpPostprocessing(classes_ids=dataloader.dataset.categories_ids,
+                                          delta=cfg.LOSS.PARAMS.DELTA_V, embedding_size=cfg.MODEL.PARAMS.VECTOR_SIZE,
+                                          device=device)
+        conf_matr = torch.zeros(num_class + 1, num_class + 1, device=device)
         for itr, batch in enumerate(dataloader):
             images = batch['image']
-            images = images.to(device)
-            image_labels = batch['image_labels'].to(device)
+            images = torch.stack(images).to(device)
+            image_labels = torch.stack(batch['image_labels']).to(device)
 
             output = model(images)
 
             loss = loss_fn(output, image_labels)
             loss_handler.update(loss.item())
 
-            # conf_matr += get_confusion_matix(output, labels)
+            output = postproc(model_out=output, true_labels=image_labels,
+                              ret_cls_pos=False, get_bbox=False, method=0)
+
+            conf_matr += get_confusion_matrix(output, image_labels, num_class)
             tq.update(cfg.TEST.BATCH_SIZE)
             tq.set_postfix(avg_loss=loss_handler.avg)
     tq.close()
     val_results = {cfg.LOSS.NAME: loss_handler.avg}
-    val_results.update(prec_rec_acc(conf_matr))
+    val_results.update(get_iou_metrics(conf_matr.cpu().numpy()))
     return val_results

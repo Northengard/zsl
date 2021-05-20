@@ -14,7 +14,7 @@ from utils.storage import load_weights
 from utils.postprocessing import BottomUpPostprocessing
 from utils.visualisation import alpha_blend, show_image
 from datasets.transformations import Rescale
-from metrics.intersection import get_iou_metrics, get_confision_matrix
+from metrics.intersection import get_iou_metrics, get_confusion_matrix
 
 
 def parse_args(arg_list):
@@ -53,6 +53,7 @@ if __name__ == '__main__':
     tq = tqdm(total=len(val_loader))
     # list of dicts with "area","image_id","bbox", "category_id", "id": 36443
     # self._coco_api.loadRes()
+
     boxes_list = list()
     with_bbox = False
     with torch.no_grad():
@@ -73,7 +74,7 @@ if __name__ == '__main__':
                 else:
                     boxes_list.append({'image_id': img_id, 'segmentation': cls_pos[0].tolist(),
                                        'category_id': class_id, 'score': float(scores[class_id][0].cpu().item())})
-            batch_confision_matrix = get_confision_matrix(semantic_labels,
+            batch_confision_matrix = get_confusion_matrix(semantic_labels,
                                                           processed_semantic_map, num_classes, ignore=-1)
             confision_matrix += batch_confision_matrix
             sample_pix_metrics = get_iou_metrics(batch_confision_matrix.cpu().numpy())

@@ -111,7 +111,7 @@ class MsCocoDataset(Dataset):
                 contour *= scale_coef
                 contour = contour.round().astype(int)
                 mask = cv2.drawContours(mask, [contour], contourIdx=-1, color=255, thickness=-1).astype(bool)
-                semantic_map[mask] = obj['category_id']
+                semantic_map[mask] = self._cat_maper[obj['category_id']]
         return semantic_map
 
     def __getitem__(self, idx):

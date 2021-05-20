@@ -1,0 +1,50 @@
+SYSTEM:
+  LOG_DIR: "logs"
+  SNAPSHOT_DIR: 'snapshots'
+  WORKERS: 8
+  NGPUS: 1
+  SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
+  PRINT_FREQ: 300
+  PARALLEL: False
+
+DATASET:
+  NAME: "mscoco"
+  PARAMS:
+    DATA_PATH: '/storage/Datasets/mscoco'
+    IMAGE_SIZE:
+      - 640
+      - 480
+
+MODEL:
+  NAME: "seg_rcnn"
+  PARAMS:
+    DECODER_CHANNELS:
+      - 512
+      - 256
+      - 128
+      - 64
+      - 32
+    VECTOR_SIZE: 32
+
+TRAIN:
+  N_EPOCHS: 36
+  BATCH_SIZE: 12
+  SCHEDULER: 'plateau'
+  VAL_REQUIRED: true
+  IN_MODELL_LOSS: false
+  LR: 3e-2
+  LR_FACTOR: 0.2
+  LR_STEPS: [4, 0, 0, 0]
+  UPDATE_STEP: 1
+
+TEST:
+  BATCH_SIZE: 12
+
+LOSS:
+  NAME: 'DiscriminativeLoss'
+  PARAMS:
+    SCALE_VAR: 1.
+    SCALE_DIST: 1.
+    SCALE_REG: 0.001
+    DELTA_V: 0.5
+    DELTA_D: 3
