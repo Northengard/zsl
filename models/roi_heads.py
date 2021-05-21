@@ -29,9 +29,6 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
     """
 
     labels = torch.cat(labels, dim=0)
-    print(torch.unique(labels))
-    print(labels.shape)
-    print(class_embeddings.shape)
     regression_targets = torch.cat(regression_targets, dim=0)
 
     classification_loss = embedding_loss(class_embeddings, labels)

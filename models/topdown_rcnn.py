@@ -53,7 +53,7 @@ def get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function)
     representation_size = 1024
     box_predictor = FastRCNNPredictor(
         representation_size,
-        num_classes,
+        num_classes + 1,
         embedding_size)
 
     return RoIHeads(box_roi_pool, box_head, box_predictor,
@@ -91,7 +91,6 @@ class TopDownRCNN(nn.Module):
         features = self.backbone(images.tensors)
         if isinstance(features, torch.Tensor):
             features = OrderedDict([('0', features)])
-            print('isinstance')
         proposals, proposal_losses = self.rpn(images, features, targets)
 
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)

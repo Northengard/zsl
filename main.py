@@ -74,7 +74,7 @@ def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir
               sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
               device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
 
-        if cfg.TRAIN.VAL_REQUIRED:
+        if cfg.TRAIN.VAL_REQUIRED and epoch % cfg.TRAIN.VAL_FREQ == 0:
             logger.info(f'start to validate {epoch}')
             val_output = validation(model=model, dataloader=val_loader, device=device,
                                     loss_fn=loss, epoch=epoch, cfg=cfg)
