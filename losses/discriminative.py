@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 from torch.nn import functional as func
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DiscriminativeLoss(nn.Module):
@@ -29,6 +32,9 @@ class DiscriminativeLoss(nn.Module):
             labels = torch.unique(seg_gt_b)
             labels = labels[labels > -1]
             num_classes = len(labels)
+            if num_classes == 1:
+                raise ValueError(f"""something wrong with data: num classes should be 2 or higher: 
+                background + any class, but actual classes is: {labels}""")
             if num_classes == 0:
                 # please refer to issue here: https://github.com/harryhan618/LaneNet/issues/12
                 _nonsense = embedding.sum()
@@ -73,7 +79,6 @@ class DiscriminativeLoss(nn.Module):
         var_loss = var_loss / batch_size
         dist_loss = dist_loss / batch_size
         reg_loss = reg_loss / batch_size
-
         total_loss = var_loss * self.scale_var + dist_loss * self.scale_dist + self.scale_reg * reg_loss
         return {'total': total_loss, 'var': var_loss, 'dist': dist_loss, 'reg': reg_loss}
 

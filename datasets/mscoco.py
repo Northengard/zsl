@@ -1,4 +1,5 @@
 import os
+import logging
 import numpy as np
 import cv2
 import torch
@@ -8,6 +9,9 @@ from torch.utils.data import Dataset
 
 from .transformations import Transforms, get_pad
 from .common import wrap_dataset
+
+
+logger = logging.getLogger(__name__)
 
 
 def collate_fn(batch):
@@ -23,6 +27,13 @@ def mscoco(config, is_train):
 
 def annot_check(annots):
     return [obj for obj in annots if type(obj['segmentation']) == list]
+
+
+def check_areas(annots, img_area):
+    for obj in annots:
+        if round(obj['area']) / img_area > 0.9:
+            return False
+    return True
 
 
 class MsCocoDataset(Dataset):
@@ -61,7 +72,11 @@ class MsCocoDataset(Dataset):
                                       for img_id, img_annot in self._img_id_vs_annot_dict.items()}
         self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
                                       if len(img_annot) > 0}
-
+        self._indexes = list(self._img_id_vs_annot_dict.keys())
+        areas = {img_id: self._coco_api.loadImgs(img_id)[0]['height'] * self._coco_api.loadImgs(img_id)[0]['width']
+                 for img_id in self._indexes}
+        self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
+                                      if check_areas(img_annot, areas[img_id])}
         self._indexes = list(self._img_id_vs_annot_dict.keys())
         self._len = len(self._img_id_vs_annot_dict)
 
@@ -112,10 +127,19 @@ class MsCocoDataset(Dataset):
                 contour = contour.round().astype(int)
                 mask = cv2.drawContours(mask, [contour], contourIdx=-1, color=255, thickness=-1).astype(bool)
                 semantic_map[mask] = self._cat_maper[obj['category_id']]
+        logger.debug(f'{np.unique(semantic_map).shape[0] == 1}')
+        if np.unique(semantic_map).shape[0] == 1:
+            raise ValueError(f'{img_annotations}')
         return semantic_map
 
     def __getitem__(self, idx):
         image, img_dict, img_id = self.get_image(idx, get_meta=True)
+
+        # self._indexes = list(self._img_id_vs_annot_dict.keys())
+        # img = self.get_image(self._indexes.index(363942))
+        # logger.debug(f'img.shape: {img.shape}')
+        # cv2.imshow('img', img)
+        # cv2.waitKey(1)
 
         # img_annotations: list of dicts
         # with keys: 'segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'
