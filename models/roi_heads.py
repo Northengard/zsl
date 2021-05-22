@@ -34,6 +34,8 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
     non_corrupted_boxes = torch.isnan(regression_targets).sum(1) == 0
     regression_targets = regression_targets[non_corrupted_boxes]
     labels = labels[non_corrupted_boxes]
+    class_embeddings = class_embeddings[non_corrupted_boxes]
+    box_regression = box_regression[non_corrupted_boxes]
 
     classification_loss = embedding_loss(class_embeddings, labels)
 
