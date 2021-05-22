@@ -69,19 +69,21 @@ def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir
 
     best_loss = inf
     for epoch in range(cfg.TRAIN.N_EPOCHS):
-        train(model=model, dataloader=train_loader,
-              loss_fn=loss, optimizer=optimizer,
-              sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
-              device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
+        avg_loss = train(model=model, dataloader=train_loader,
+                         loss_fn=loss, optimizer=optimizer,
+                         sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
+                         device=device, logger=logger, board_writer=writer, epoch=epoch, cfg=cfg)
 
-        if cfg.TRAIN.VAL_REQUIRED and epoch % cfg.TRAIN.VAL_FREQ == 0:
+        is_val_required = cfg.TRAIN.VAL_REQUIRED and (epoch % cfg.TRAIN.VAL_FREQ == 0)
+        if is_val_required:
             logger.info(f'start to validate {epoch}')
             val_output = validation(model=model, dataloader=val_loader, device=device,
                                     loss_fn=loss, epoch=epoch, cfg=cfg)
             logger.info(f'validation results:\n{val_output}')
         else:
-            logger.info('validation skipped, cfg.TRAIN.VAL_REQUIRED is False')
-            val_output = {cfg.LOSS.NAME: best_loss}
+
+            logger.info(f'validation skipped, is_val_required = {is_val_required}')
+            val_output = {cfg.LOSS.NAME: avg_loss}
         if cfg.TRAIN.SCHEDULER != 'multistep':
             scheduler.step(val_output[cfg.LOSS.NAME])
         if proc_device == 0:

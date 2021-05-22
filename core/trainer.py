@@ -49,6 +49,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
         tq.set_postfix(avg_loss=loss_handler.avg)
         tq.update(cfg.TRAIN.BATCH_SIZE)
     tq.close()
+    return loss_handler.avg
 
 
 def validation(model, dataloader, loss_fn, device, epoch, cfg):

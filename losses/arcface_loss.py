@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from mmdet.models.builder import LOSSES
 from pytorch_metric_learning import losses
 
 
