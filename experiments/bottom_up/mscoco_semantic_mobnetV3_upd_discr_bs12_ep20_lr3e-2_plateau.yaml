@@ -25,6 +25,7 @@ MODEL:
       - 64
       - 32
     VECTOR_SIZE: 32
+  PRETRAINED: '/home/dgorbunov/Documents/work_files/zsl/snapshots/mscoco/seg_rcnn/mscoco_semantic_mobnetV3_upd_discr_bs12_ep20_lr3e-2_plateau/checkpoint_seg_rcnn_epoch_4.pth'
 
 TRAIN:
   N_EPOCHS: 36
@@ -32,6 +33,7 @@ TRAIN:
   SCHEDULER: 'plateau'
   VAL_REQUIRED: true
   IN_MODELL_LOSS: false
+  VAL_FREQ: 10
   LR: 3e-2
   LR_FACTOR: 0.2
   LR_STEPS: [4, 0, 0, 0]
@@ -47,4 +49,4 @@ LOSS:
     SCALE_DIST: 1.
     SCALE_REG: 0.001
     DELTA_V: 0.5
-    DELTA_D: 3
+    DELTA_D: 3.

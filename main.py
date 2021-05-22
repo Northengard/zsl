@@ -51,7 +51,7 @@ def main_eval(model, proc_device, logger, writer, cfg):
     writer.add_figure('eval conf_matrix', draw_confusion_matrix(conf_matr, sup_labels))
 
 
-def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir, cfg):
+def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir, cfg, start_epoch):
     if cfg.TRAIN.SCHEDULER == 'multistep':
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg.TRAIN.LR_STEPS,
                                                          gamma=cfg.TRAIN.LR_FACTOR)
@@ -68,7 +68,7 @@ def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir
     logger.info(f'dataloaders {cfg.DATASET.NAME} up')
 
     best_loss = inf
-    for epoch in range(cfg.TRAIN.N_EPOCHS):
+    for epoch in range(start_epoch + 1, cfg.TRAIN.N_EPOCHS):
         avg_loss = train(model=model, dataloader=train_loader,
                          loss_fn=loss, optimizer=optimizer,
                          sheduler=None if cfg.TRAIN.SCHEDULER == 'plateau' else scheduler,
@@ -129,12 +129,15 @@ def main(proc_device, args, cfg):
     else:
         loss = getattr(losses, cfg.LOSS.NAME)(cfg)
 
+    start_epoch = 0
     model = getattr(models, cfg.MODEL.NAME)(cfg)
     optimizer = torch.optim.SGD(model.parameters(), lr=cfg.TRAIN.LR) if is_train else None
     if cfg.MODEL.PRETRAINED:
+        logger.info('loading: pretrained weights')
         load_weights(model=model,
                      optimizer=optimizer,
                      checkpoint_file=cfg.MODEL.PRETRAINED)
+        start_epoch = int(os.path.basename(cfg.MODEL.PRETRAINED).split('.')[0][-1])
     if cfg.SYSTEM.PARALLEL:
         model = DataParallel(model)
     model = model.to(proc_device)
@@ -147,7 +150,8 @@ def main(proc_device, args, cfg):
                    logger=logger,
                    writer=writer,
                    snapshot_dir=snapshot_dir,
-                   cfg=cfg)
+                   cfg=cfg,
+                   start_epoch=start_epoch)
     else:
         main_eval(model=model,
                   proc_device=proc_device,
