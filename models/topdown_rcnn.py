@@ -93,8 +93,8 @@ class TopDownRCNN(nn.Module):
             features = OrderedDict([('0', features)])
         proposals, proposal_losses = self.rpn(images, features, targets)
 
-        halt = torch.stack([torch.isnan(pl) for pl in proposal_losses.values()], 0)
-        halt = halt.sum()
+        # halt = torch.stack([torch.isnan(pl) for pl in proposal_losses.values()], 0)
+        # halt = halt.sum()
 
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
         # detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)
