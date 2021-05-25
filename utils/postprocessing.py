@@ -28,13 +28,13 @@ class BottomUpPostprocessing:
 
     @staticmethod
     def _get_bbox(coord_array):
-        top = coord_array[coord_array[:, 0].argmin()]
-        left = coord_array[coord_array[:, 1].argmin()]
+        left = coord_array[coord_array[..., 0].argmin()][0][0]
+        top = coord_array[coord_array[..., 1].argmin()][0][1]
 
-        bottom = coord_array[coord_array[:, 0].argmax()]
-        right = coord_array[coord_array[:, 1].argmax()]
+        right = coord_array[coord_array[..., 0].argmax()][0][0]
+        bottom = coord_array[coord_array[..., 1].argmax()][0][1]
         # bbox
-        return torch.stack([top[0], left[1], bottom[0], right[1]])
+        return np.stack([left, top, right, bottom])
 
     def _get_top_border_coords(self, target_val_mask, is_reversed=False):
         map_h, map_w = target_val_mask.shape[-2:]
@@ -62,7 +62,8 @@ class BottomUpPostprocessing:
                                             cv2.CHAIN_APPROX_SIMPLE)[0]
                 batch_coord_array.extend(contours)
                 for contour in contours:
-                    scores.append(score_map[batch_id][contour].mean().cpu().item)
+                    sqore_mask = cv2.drawContours(mask, [contour], contourIdx=-1, color=255, thickness=-1).astype(bool)
+                    scores.append(score_map[batch_id][sqore_mask].mean().cpu().item())
 
             if not get_bbox:
                 return batch_coord_array, scores
@@ -72,6 +73,9 @@ class BottomUpPostprocessing:
                         if coord_array.shape[0] > 0], scores
         else:
             return list(), list()
+
+    def get_mapped_category_id(self, reorder_cls_id):
+        return self._cat_maper[reorder_cls_id]
 
     def __call__(self, model_out, true_labels=None, ret_cls_pos=False, get_bbox=True, method=0):
         if true_labels is not None:
