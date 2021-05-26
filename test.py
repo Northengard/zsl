@@ -95,11 +95,12 @@ if __name__ == '__main__':
                         for obj_id, obj_pos in enumerate(cls_pos):
                             left, top, right, bottom = obj_pos
                             real_image = cv2.rectangle(img=real_image,
-                                                       pt1=(left, top - 20), pt2=(right, bottom),
+                                                       pt1=(left, top), pt2=(right, bottom),
                                                        color=(0, 255, 0),
                                                        thickness=1)
                             # print(categories[real_cls_id], real_cls_id)
-                            real_image = cv2.putText(real_image, f'{categories[real_cls_id]}_{obj_id}', org=(left, top),
+                            real_image = cv2.putText(real_image, f'{categories[real_cls_id]}_{obj_id}',
+                                                     org=(left, top - 20),
                                                      fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                                                      fontScale=1,
                                                      color=(0, 144, 255),

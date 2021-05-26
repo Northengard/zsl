@@ -3,6 +3,37 @@ import numpy as np
 import torch
 from sklearn.cluster import MeanShift
 
+from datasets.transformations import get_pad
+
+
+def rescale_coords(coords, img_shape, orig_img_shape):
+    """Resize coords to original image shape.
+
+    :param coords: ndarray, coords to rescale
+    :param img_shape: iterable, current (h,w)
+    :param orig_img_shape: iterable, desired (h,w)
+    """
+    img_h, img_w = img_shape
+    src_h, src_w = orig_img_shape
+    _, pad_h, _, pad_w = get_pad(img_h, img_w, src_h, src_w)
+    src_h += pad_h
+    resize_coef = img_h / src_h
+    return coords / resize_coef
+
+
+def cosine_similarity(matr1, matr2, eps=1e-8):
+    """Calculate cosine similarity matrix for the given 2d tensors.
+
+    :param matr1: Tensor, first 2d tensor
+    :param matr2: Tensor, second 2d tensor
+    :param eps: parameter for stable computations
+    """
+    a_n, b_n = matr1.norm(dim=1)[:, None], matr2.norm(dim=1)[:, None]
+    a_norm = matr1 / torch.clamp(a_n, min=eps)
+    b_norm = matr2 / torch.clamp(b_n, min=eps)
+    sim_mt = torch.mm(a_norm, b_norm.transpose(0, 1))
+    return sim_mt
+
 
 class BottomUpPostprocessing:
     def __init__(self, classes_ids, delta, embedding_size, device):

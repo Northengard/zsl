@@ -27,6 +27,8 @@ def load_weights(model, optimizer, checkpoint_file):
     if optimizer is not None:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     model.load_state_dict(checkpoint['state_dict'])
+    if 'support_matrix' in checkpoint:
+        model.support_matrix = checkpoint['support_matrix']
 
 
 def save_weights(model, prefix, model_name, epoch, save_dir, optimizer=None, parallel=True):
@@ -49,11 +51,11 @@ def save_weights(model, prefix, model_name, epoch, save_dir, optimizer=None, par
         state_dict = model.module.state_dict()
     else:
         state_dict = model.state_dict()
+    checkpoint = {'state_dict': state_dict}
     if optimizer:
-        checkpoint = {"state_dict": state_dict,
-                      "optimizer_state_dict": optimizer.state_dict()}
-    else:
-        checkpoint = {'state_dict': state_dict}
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+    if hasattr(model, 'support_matrix'):
+        checkpoint['support_matrix'] = model.support_matrix
     torch.save(checkpoint, file)
 
 

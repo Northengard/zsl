@@ -34,9 +34,9 @@ def topdown_rcnn(config):
 
 
 def get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function):
-    box_score_thresh = 0.05
+    box_score_thresh = 0.97
     box_nms_thresh = 0.5
-    box_detections_per_img = 100
+    box_detections_per_img = 60
     box_fg_iou_thresh = 0.5
     box_bg_iou_thresh = 0.5
     box_batch_size_per_image = 512
@@ -74,6 +74,14 @@ class TopDownRCNN(nn.Module):
         self.rpn = model.rpn
         self.roi_heads = get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function)
 
+    @property
+    def support_matrix(self):
+        return self.roi_heads.support_matrix
+
+    @support_matrix.setter
+    def support_matrix(self, matrix):
+        self.roi_heads.support_matrix = matrix
+
     def forward(self, images, targets=None):
         """
         Args:
@@ -85,7 +93,12 @@ class TopDownRCNN(nn.Module):
                 During testing, it returns list[BoxList] contains additional fields
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
         """
-        if not self.training and targets is None:
+        original_image_sizes = []
+        for img in images:
+            val = img.shape[-2:]
+            assert len(val) == 2
+            original_image_sizes.append((val[0], val[1]))
+        if self.training and targets is None:
             raise ValueError(f'targets cannot be None, when model is in training mode')
         images, targets = self.preprocess(images, targets)
         features = self.backbone(images.tensors)
@@ -97,7 +110,7 @@ class TopDownRCNN(nn.Module):
         # halt = halt.sum()
 
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
-        # detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)
+        detections = self.preprocess.postprocess(detections, images.image_sizes, original_image_sizes)
 
         losses = {}
         losses.update(detector_losses)
@@ -140,6 +153,8 @@ class FastRCNNPredictor(nn.Module):
 
     def __init__(self, in_channels, num_classes, embedding_size):
         super(FastRCNNPredictor, self).__init__()
+        self.num_classes = num_classes
+        self.embedding_size = embedding_size
         self.embedder = nn.Linear(in_channels, embedding_size)
         self.bbox_pred = nn.Linear(in_channels, num_classes * 4)
 

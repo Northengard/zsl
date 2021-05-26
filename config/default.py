@@ -44,6 +44,7 @@ _C.TEST = CfgNode()
 _C.TEST.BATCH_SIZE = _C.TRAIN.BATCH_SIZE
 _C.TEST.DATA_SOURCE = './data/support_images'
 _C.TEST.SIM_THRESHOLD = 0.6
+_C.TEST.VISUALIZE = False
 
 _C.LOSS = CfgNode()
 _C.LOSS.NAME = 'ContrastiveLoss'

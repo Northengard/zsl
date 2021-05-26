@@ -51,7 +51,6 @@ class SupportVector(Dataset):
     def __getitem__(self, idx):
         img = cv2.imread(self._image_list[idx])
         label = self._labels[idx]
-        label = torch.tensor(label)
         if self._transformations:
             img = self._transformations(img)
         sample = {'image': img, 'label': label}

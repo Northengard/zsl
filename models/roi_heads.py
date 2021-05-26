@@ -1,6 +1,8 @@
 import torch
 import torchvision
 
+from scipy.optimize import linear_sum_assignment
+
 import torch.nn.functional as F
 from torch import nn, Tensor
 
@@ -11,6 +13,7 @@ from torchvision.ops import roi_align
 from torchvision.models.detection import _utils as det_utils
 
 from typing import Optional, List, Dict, Tuple
+from utils.postprocessing import cosine_similarity
 
 
 def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, labels, regression_targets):
@@ -513,7 +516,17 @@ class RoIHeads(nn.Module):
                  embeddings_loss_function=None):
         super(RoIHeads, self).__init__()
 
+        self.box_roi_pool = box_roi_pool
+        self.box_head = box_head
+        self.box_predictor = box_predictor
+
         self.embeddings_loss_function = embeddings_loss_function
+        self.num_classes = self.box_predictor.num_classes
+        self.embedding_size = self.box_predictor.embedding_size
+        self._support_matrix = torch.zeros(self.num_classes,
+                                           self.embedding_size, requires_grad=False)
+        self._divisors = torch.zeros(self.box_predictor.num_classes)
+
         self.box_similarity = box_ops.box_iou
         # assign ground-truth boxes for each proposal
         self.proposal_matcher = det_utils.Matcher(
@@ -529,10 +542,6 @@ class RoIHeads(nn.Module):
             bbox_reg_weights = (10., 10., 5., 5.)
         self.box_coder = det_utils.BoxCoder(bbox_reg_weights)
 
-        self.box_roi_pool = box_roi_pool
-        self.box_head = box_head
-        self.box_predictor = box_predictor
-
         self.score_thresh = score_thresh
         self.nms_thresh = nms_thresh
         self.detections_per_img = detections_per_img
@@ -544,6 +553,15 @@ class RoIHeads(nn.Module):
         self.keypoint_roi_pool = keypoint_roi_pool
         self.keypoint_head = keypoint_head
         self.keypoint_predictor = keypoint_predictor
+
+    @property
+    def support_matrix(self):
+        return self._support_matrix / self._divisors
+
+    @support_matrix.setter
+    def support_matrix(self, matrix):
+        self._support_matrix = matrix
+        self._divisors = torch.zeros(matrix.shape[0])
 
     def has_mask(self):
         if self.mask_roi_pool is None:
@@ -664,20 +682,74 @@ class RoIHeads(nn.Module):
         regression_targets = self.box_coder.encode(matched_gt_boxes, proposals)
         return proposals, matched_idxs, labels, regression_targets
 
+    def postprocess_boxes(self, box_regression, proposals, image_shapes):
+        boxes_per_image = [boxes_in_image.shape[0] for boxes_in_image in proposals]
+        pred_boxes = self.box_coder.decode(box_regression, proposals)
+        pred_boxes_list = pred_boxes.split(boxes_per_image, 0)
+
+        bboxes = list()
+        for boxes, image_shape in zip(pred_boxes_list, image_shapes):
+            boxes = box_ops.clip_boxes_to_image(boxes, image_shape)
+            boxes = boxes.reshape(-1, 4)
+            # keep = box_ops.remove_small_boxes(boxes, min_size=1e-2)
+            # boxes = boxes[keep]
+            bboxes.append(boxes)
+            return bboxes
+
+    def update_support_matrix(self, class_embeddings, box_regression, proposals, image_shapes, gt_boxes, gt_labels):
+        bboxes = self.postprocess_boxes(box_regression=box_regression,
+                                        proposals=proposals, image_shapes=image_shapes)
+        # self.assign_targets_to_proposals(bboxes, gt_boxes, gt_labels)
+        device = class_embeddings.device
+        self._divisors = self._divisors.to(device)
+        self._support_matrix = self._support_matrix.to(device)
+
+        for proposals_in_image, pred_emb_in_image, gt_boxes_in_image, gt_labels_in_image in zip(bboxes,
+                                                                                                [class_embeddings],
+                                                                                                gt_boxes, gt_labels):
+            match_quality_matrix = self.box_similarity(gt_boxes_in_image, proposals_in_image)
+            matched_gt_ids_in_image, matched_preds_in_image = linear_sum_assignment(match_quality_matrix.cpu().numpy(),
+                                                                                    maximize=True)
+
+            labels_in_image = gt_labels_in_image[matched_gt_ids_in_image]
+            labels_in_image = labels_in_image.to(dtype=torch.int64)
+
+            embeddings_indexes = matched_preds_in_image // self._support_matrix.shape[0]
+
+            matched_emb = pred_emb_in_image[embeddings_indexes]
+
+            cls_ids, counts = torch.unique(labels_in_image, return_counts=True)
+            for cls_id, count in zip(cls_ids, counts):
+                if cls_id > self._divisors.shape[0]:
+                    self._divisors = torch.cat([self._divisors,
+                                                torch.zeros(cls_id + 1 - self._divisors.shape[0],
+                                                            requires_grad=False, device=device)],
+                                               0)
+                    self._support_matrix = torch.cat([self._divisors,
+                                                      torch.zeros(cls_id + 1 - self._divisors.shape[0],
+                                                                  self._support_matrix.shape[1],
+                                                                  requires_grad=False, device=device)],
+                                                     0)
+                self._divisors[cls_id] += count
+                self._support_matrix[cls_id] += matched_emb[labels_in_image == cls_id].sum(0)
+
     def postprocess_detections(self,
-                               class_logits,  # type: Tensor
+                               class_vectors,  # type: Tensor
                                box_regression,  # type: Tensor
                                proposals,  # type: List[Tensor]
                                image_shapes  # type: List[Tuple[int, int]]
                                ):
         # type: (...) -> Tuple[List[Tensor], List[Tensor], List[Tensor]]
-        device = class_logits.device
-        num_classes = class_logits.shape[-1]
+        # TODO: SUPPORT VECTORS ARE REQUIRED
+        # TODO: ADD, DELETE
+        device = class_vectors.device
+        num_classes = self._support_matrix.shape[0]  # [(self._support_matrix != 0).all(1)].shape[0]
 
         boxes_per_image = [boxes_in_image.shape[0] for boxes_in_image in proposals]
         pred_boxes = self.box_coder.decode(box_regression, proposals)
 
-        pred_scores = F.softmax(class_logits, -1)
+        # self._support_matrix[(self._support_matrix != 0).all(1)]
+        pred_scores = cosine_similarity(class_vectors, self._support_matrix / self._divisors.unsqueeze(1))
 
         pred_boxes_list = pred_boxes.split(boxes_per_image, 0)
         pred_scores_list = pred_scores.split(boxes_per_image, 0)
@@ -722,6 +794,18 @@ class RoIHeads(nn.Module):
 
         return all_boxes, all_scores, all_labels
 
+    def _train_update_support_matrix(self, class_embeddings, regression_targets, labels):
+        gt_labels = torch.cat(labels, dim=0)
+        r_targets = torch.cat(regression_targets, dim=0)
+        non_corrupted_boxes = torch.isnan(r_targets).sum(1) == 0
+        gt_labels = gt_labels[non_corrupted_boxes]
+        cls_emb = class_embeddings[non_corrupted_boxes]
+
+        cls_ids, counts = torch.unique(gt_labels, return_counts=True)
+        for cls_id, count in zip(cls_ids, counts):
+            self._divisors[cls_id] += count
+            self._support_matrix[cls_id] += cls_emb[gt_labels == cls_id].sum()
+
     def forward(self,
                 features,  # type: Dict[str, Tensor]
                 proposals,  # type: List[Tensor]
@@ -748,9 +832,12 @@ class RoIHeads(nn.Module):
         if self.training:
             proposals, matched_idxs, labels, regression_targets = self.select_training_samples(proposals, targets)
         else:
+            # if targets is None:
             labels = None
             regression_targets = None
             matched_idxs = None
+            # else:
+            #     proposals, matched_idxs, labels, regression_targets = self.select_training_samples(proposals, targets)
 
         box_features = self.box_roi_pool(features, proposals, image_shapes)
         box_features = self.box_head(box_features)
@@ -760,6 +847,7 @@ class RoIHeads(nn.Module):
         losses = {}
         if self.training:
             assert labels is not None and regression_targets is not None
+            self._train_update_support_matrix(class_logits, regression_targets, labels)
             loss_classifier, loss_box_reg = fastrcnn_custom_loss(self.embeddings_loss_function,
                                                                  class_logits, box_regression, labels,
                                                                  regression_targets)
@@ -768,6 +856,11 @@ class RoIHeads(nn.Module):
                 "loss_box_reg": loss_box_reg
             }
         else:
+            if targets is not None:
+                targets = {key: [t[key] for t in targets] for key in targets[0].keys()}
+                self.update_support_matrix(class_logits, box_regression,
+                                           proposals, image_shapes,
+                                           targets['boxes'], targets['labels'])
             boxes, scores, labels = self.postprocess_detections(class_logits, box_regression, proposals, image_shapes)
             num_images = len(boxes)
             for i in range(num_images):
@@ -775,7 +868,7 @@ class RoIHeads(nn.Module):
                     {
                         "boxes": boxes[i],
                         "labels": labels[i],
-                        "scores": scores[i],
+                        "scores": scores[i]
                     }
                 )
 

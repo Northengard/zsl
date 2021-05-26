@@ -31,24 +31,24 @@ def parse_args(arg_list):
     return args
 
 
-def main_eval(model, proc_device, logger, writer, cfg):
-    model.evaluation()
+def main_eval(config, model, proc_device, logger, writer, cfg):
+    model = model.eval()
 
     eval_loader = getattr(datasets, cfg.DATASET.NAME)(cfg, is_train=False)
-    support_dataset = getattr(datasets, 'support_dataset')(cfg.TEST.DATA_SOURCE)
-    support_matrix = list()
-    sup_labels = ['None']
-    with torch.no_grad():
-        for item in support_dataset:
-            sup_image = item['image'].to(proc_device)
-            sup_labels.append(item['label'].numpy())
-            support_matrix.append(model(sup_image))
-    support_matrix = torch.stack(support_matrix, 0)
-    conf_matr = evaluation(model=model, dataloader=eval_loader, support_matrix=support_matrix,
-                           device=proc_device, threshold=cfg.TEST.SIM_THRESHOLD)
+    # support_dataset = getattr(datasets, 'support_dataset')(cfg.TEST.DATA_SOURCE)
+    # classes = eval_loader.dataset.categories
+    # support_matrix = list()
+    # sup_labels = ['None']
+    # with torch.no_grad():
+    #     for item in support_dataset:
+    #         sup_image = item['image'].to(proc_device)
+    #         sup_labels.append(item['label'])
+    #         support_matrix.append(model(sup_image.unsqueeze(0)))
+    # support_matrix = torch.stack(support_matrix, 0)
+    conf_matr = evaluation(config=config, model=model, dataloader=eval_loader, device=proc_device)
     logger.info('confusion_matrix')
     logger.info(conf_matr)
-    writer.add_figure('eval conf_matrix', draw_confusion_matrix(conf_matr, sup_labels))
+    # writer.add_figure('eval conf_matrix', draw_confusion_matrix(conf_matr, sup_labels))
 
 
 def main_train(model, proc_device, loss, optimizer, logger, writer, snapshot_dir, cfg, start_epoch):
@@ -153,7 +153,8 @@ def main(proc_device, args, cfg):
                    cfg=cfg,
                    start_epoch=start_epoch)
     else:
-        main_eval(model=model,
+        main_eval(config=config,
+                  model=model,
                   proc_device=proc_device,
                   logger=logger,
                   writer=writer,
