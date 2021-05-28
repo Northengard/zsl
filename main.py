@@ -137,7 +137,7 @@ def main(proc_device, args, cfg):
         load_weights(model=model,
                      optimizer=optimizer,
                      checkpoint_file=cfg.MODEL.PRETRAINED)
-        start_epoch = int(os.path.basename(cfg.MODEL.PRETRAINED).split('.')[0][-1])
+        start_epoch = int(os.path.basename(cfg.MODEL.PRETRAINED).split('.')[0].split('_')[-1])
     if cfg.SYSTEM.PARALLEL:
         model = DataParallel(model)
     model = model.to(proc_device)
