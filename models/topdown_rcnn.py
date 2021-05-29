@@ -5,6 +5,7 @@ from torch import nn
 from torch.nn import functional as func
 import torchvision
 from torchvision.ops import MultiScaleRoIAlign
+from .general import ResNetBlock
 
 from .roi_heads import RoIHeads
 
@@ -30,28 +31,31 @@ def topdown_rcnn(config):
     num_classes = config.LOSS.PARAMS.NUM_CLS
     embedding_size = config.MODEL.PARAMS.VECTOR_SIZE
     embeddings_loss_function = getattr(losses, config.LOSS.NAME)(config)
-    return TopDownRCNN(num_classes, embedding_size, embeddings_loss_function)
+    return TopDownRCNN(config.MODEL.PARAMS, num_classes, embedding_size, embeddings_loss_function)
 
 
-def get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function):
-    box_score_thresh = 0.97
-    box_nms_thresh = 0.5
-    box_detections_per_img = 60
-    box_fg_iou_thresh = 0.5
-    box_bg_iou_thresh = 0.5
-    box_batch_size_per_image = 512
-    box_positive_fraction = 0.25
-    bbox_reg_weights = None
+def get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_function):
+    box_score_thresh = cfg.BBOX.SCORE_THRSH
+    box_nms_thresh = cfg.BBOX.NMS_THRSH
+    box_detections_per_img = cfg.BBOX.DET_PER_IMH
+    box_fg_iou_thresh = cfg.BBOX.FG_IOU_THRSH
+    box_bg_iou_thresh = cfg.BBOX.BG_IOU_THRSH
+    box_batch_size_per_image = cfg.BBOX.BS_PER_IMG
+    box_positive_fraction = cfg.BBOX.POS_FRAQ
+    bbox_reg_weights = cfg.BBOX.REG_W
 
     box_roi_pool = MultiScaleRoIAlign(featmap_names=['0', '1', '2', '3'], output_size=7, sampling_ratio=2)
     resolution = box_roi_pool.output_size[0]
-    representation_size = 1024
+    representation_size = cfg.BBOX.REPR_SIZE
+    extended_mlp = cfg.EXTENDED_TWOMLP
+    extendend_emb_head = cfg.EXTENDED_EMB_HEAD
     box_head = TwoMLPHead(
-        out_channels * resolution ** 2,
+        extended_mlp,
+        out_channels, resolution ** 2,
         representation_size)
 
-    representation_size = 1024
     box_predictor = FastRCNNPredictor(
+        extendend_emb_head,
         representation_size,
         num_classes + 1,
         embedding_size)
@@ -65,14 +69,14 @@ def get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function)
 
 
 class TopDownRCNN(nn.Module):
-    def __init__(self, num_classes, embedding_size, embeddings_loss_function):
+    def __init__(self, cfg, num_classes, embedding_size, embeddings_loss_function):
         super(TopDownRCNN, self).__init__()
         model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=True)
         self.preprocess = model.transform
         self.backbone = model.backbone
         out_channels = self.backbone.out_channels
         self.rpn = model.rpn
-        self.roi_heads = get_roi(out_channels, num_classes, embedding_size, embeddings_loss_function)
+        self.roi_heads = get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_function)
 
     @property
     def support_matrix(self):
@@ -127,13 +131,17 @@ class TwoMLPHead(nn.Module):
         representation_size (int): size of the intermediate representation
     """
 
-    def __init__(self, in_channels, representation_size):
+    def __init__(self, extended_mlp, in_channels, resolution, representation_size):
         super(TwoMLPHead, self).__init__()
-
-        self.fc6 = nn.Linear(in_channels, representation_size)
+        self.extended_mlp = extended_mlp
+        if extended_mlp:
+            self.res_block = ResNetBlock(in_channels, in_channels, expand=2, stride=1)
+        self.fc6 = nn.Linear(in_channels * resolution, representation_size)
         self.fc7 = nn.Linear(representation_size, representation_size)
 
     def forward(self, x):
+        if self.extended_mlp:
+            x = self.res_block(x)
         x = x.flatten(start_dim=1)
 
         x = func.relu(self.fc6(x))

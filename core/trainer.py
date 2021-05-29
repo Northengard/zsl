@@ -19,14 +19,13 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
     for itr, batch in enumerate(dataloader):
         images = batch['image']
         images = [image.to(device) for image in images]
-        # labels = labels.to(device)
 
         if cfg.TRAIN.IN_MODELL_LOSS:
             targets = batch['targets']
             targets = [{cat_id: bboxes.to(device) for cat_id, bboxes in target.items()} for target in targets]
             output, loss_dict = model(images, targets)
             loss = torch.stack(list(loss_dict.values()))
-            loss[0] *= 0.3
+            loss[0] *= 0.5
             loss = torch.sum(loss)
         else:
             image_labels = torch.stack(batch['image_labels']).to(device)

@@ -556,7 +556,7 @@ class RoIHeads(nn.Module):
 
     @property
     def support_matrix(self):
-        return self._support_matrix / self._divisors
+        return self._support_matrix / self._divisors[:, None]
 
     @support_matrix.setter
     def support_matrix(self, matrix):
@@ -795,6 +795,9 @@ class RoIHeads(nn.Module):
         return all_boxes, all_scores, all_labels
 
     def _train_update_support_matrix(self, class_embeddings, regression_targets, labels):
+        if self._divisors.device != class_embeddings.device:
+            self._divisors = self._divisors.to(class_embeddings.device)
+            self._support_matrix = self._support_matrix.to(class_embeddings.device)
         gt_labels = torch.cat(labels, dim=0)
         r_targets = torch.cat(regression_targets, dim=0)
         non_corrupted_boxes = torch.isnan(r_targets).sum(1) == 0
