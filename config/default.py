@@ -27,6 +27,7 @@ _C.MODEL = CfgNode()
 _C.MODEL.NAME = "base_model"
 _C.MODEL.PARAMS = CfgNode(new_allowed=True)
 _C.MODEL.PRETRAINED = ''
+_C.MODEL.NORM_VECTORS = False
 
 _C.TRAIN = CfgNode()
 _C.TRAIN.N_EPOCHS = 100

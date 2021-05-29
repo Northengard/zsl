@@ -43,7 +43,9 @@ if __name__ == '__main__':
     model = model.to(device)
     model.eval()
     val_loader = getattr(datasets, config.DATASET.NAME)(config, is_train=False)
-    postproc = BottomUpPostprocessing(val_loader.dataset.categories_ids, delta=0.75,
+    postproc = BottomUpPostprocessing(val_loader.dataset.categories_ids,
+                                      delta_v=config.LOSS.PARAMS.DELTA_V,
+                                      delta_d=config.LOSS.PARAMS.DELTA_D,
                                       embedding_size=config.MODEL.PARAMS.VECTOR_SIZE, device=device)
     rescale = Rescale(config.DATASET.PARAMS.IMAGE_SIZE)
     num_classes = val_loader.dataset.num_classes
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     # self._coco_api.loadRes()
 
     boxes_list = list()
-    visualize = False
+    visualize = True
     with_bbox = True
     with torch.no_grad():
         for itr, batch in enumerate(val_loader):
@@ -63,16 +65,17 @@ if __name__ == '__main__':
             images = torch.stack(batch['image']).to(device)
             labels = torch.stack(batch['image_labels']).to(device)
             semantic = model(images)
-            processed_semantic_map, cls_data, scores = postproc(semantic, true_labels=labels, method=0,
-                                                                ret_cls_pos=True, get_bbox=with_bbox)
+            processed_semantic_map, cls_data, scores = postproc(semantic, true_labels=labels, method=1,
+                                                                ret_cls_pos=False, get_bbox=with_bbox,
+                                                                real_image_shape=real_image.shape[:2])
             for class_id, cls_pos in cls_data.items():
                 real_cls_id = postproc.get_mapped_category_id(class_id)
                 for obj_id, obj_pos in enumerate(cls_pos):
                     if with_bbox:
-                        boxes_list.append({'image_id': img_id, 'bbox': obj_pos.tolist(),
+                        boxes_list.append({'image_id': img_id, 'bbox': obj_pos,
                                            'category_id': real_cls_id, 'score': scores[class_id][obj_id]})
                     else:
-                        boxes_list.append({'image_id': img_id, 'segmentation': obj_pos.tolist(),
+                        boxes_list.append({'image_id': img_id, 'segmentation': obj_pos,
                                            'category_id': real_cls_id, 'score': scores[class_id][obj_id]})
             batch_confision_matrix = get_confusion_matrix(labels,
                                                           processed_semantic_map, num_classes, ignore=-1)

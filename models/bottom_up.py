@@ -27,14 +27,16 @@ def test_seg_rcnn(model, device, logger):
 
 def seg_rcnn(config):
     decoder_channels = config.MODEL.PARAMS.DECODER_CHANNELS
-    return SegRCNN(decoder_channels)
+    use_norm = config.MODEL.NORM_VECTORS
+    return SegRCNN(decoder_channels, use_norm)
 
 
 class SegRCNN(nn.Module):
-    def __init__(self, decoder_channels=None, encoder_type='mobilenet'):
+    def __init__(self, decoder_channels=None, norm_output=False, encoder_type='mobilenet'):
         super(SegRCNN, self).__init__()
         self._encoder_forward = {'mobilenet': self._mobilenet_forward,
                                  'resnet': self._resnet_forward}
+        self.norm_output = norm_output
         if encoder_type not in self._encoder_forward.keys():
             raise AssertionError(f'encoder_type should be one of {self._encoder_forward.keys()}')
         self._encoder_type = encoder_type
@@ -110,5 +112,7 @@ class SegRCNN(nn.Module):
                 x = torch.cat((x, skip_1), 1)
 
         x = self.last_block(x)
+        if self.norm_output:
+            x /= torch.norm(x, p=2, dim=-1)
 
         return x
