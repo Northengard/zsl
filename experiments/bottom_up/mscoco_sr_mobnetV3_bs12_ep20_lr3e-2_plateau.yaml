@@ -11,6 +11,12 @@ DATASET:
   NAME: "mscoco"
   PARAMS:
     DATA_PATH: 'data/ms_coco'
+    SUPERCATEG:
+      - 'vehicle'
+      - 'outdoor'
+      - 'animal'
+      - 'furniture'
+      - 'person'
     IMAGE_SIZE:
       - 640
       - 480
@@ -47,3 +53,7 @@ LOSS:
     SCALE_REG: 0.5
     DELTA_V: 0.5
     DELTA_D: 3.
+
+TRANSFORMATIONS:
+  PARAMS:
+    NORMALIZE: true

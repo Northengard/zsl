@@ -1,7 +1,7 @@
 SYSTEM:
   LOG_DIR: "logs"
   SNAPSHOT_DIR: 'snapshots'
-  WORKERS: 6
+  WORKERS: 2
   NGPUS: 1
   SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
   PRINT_FREQ: 100
@@ -11,6 +11,12 @@ DATASET:
   NAME: "mscoco"
   PARAMS:
     DATA_PATH: 'data/ms_coco'
+    SUPERCATEG:
+      - 'vehicle'
+      - 'outdoor'
+      - 'animal'
+      - 'furniture'
+      - 'person'
     IMAGE_SIZE:
       - 640
       - 480
@@ -25,11 +31,11 @@ MODEL:
       - 128
       - 64
     VECTOR_SIZE: 64
-  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_mobnetV3_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_14.pth'
+  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_resnet_discr_30clsVS64_bs10_ep20_lr3e-2_plateau/best_seg_rcnn_epoch_19.pth'
 
 TRAIN:
   N_EPOCHS: 20
-  BATCH_SIZE: 10
+  BATCH_SIZE: 1
   SCHEDULER: 'plateau'
   LR: 1e-2
   LR_FACTOR: 0.2
@@ -37,7 +43,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 10
+  BATCH_SIZE: 1
 
 LOSS:
   NAME: 'DiscriminativeLoss'
@@ -46,4 +52,4 @@ LOSS:
     SCALE_DIST: 1.
     SCALE_REG: 0.
     DELTA_V: 0.5
-    DELTA_D: 3
+    DELTA_D: 3.

@@ -302,7 +302,7 @@ class Transforms:
         color_transform_params = conf.TRANSFORMATIONS.PARAMS.COLOR
         if is_train:
             self.train_transform = RandomApply([
-                RandomShadowFields(),
+                # RandomShadowFields(),
                 ColorTransform(brightness=color_transform_params.BRIGHTNESS,
                                contrast=color_transform_params.CONTRAST,
                                saturation=color_transform_params.SATURATION,

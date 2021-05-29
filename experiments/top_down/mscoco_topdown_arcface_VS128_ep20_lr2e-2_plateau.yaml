@@ -37,3 +37,7 @@ TEST:
 
 LOSS:
   NAME: 'ArcFaceLoss'
+
+TRANSFORMATIONS:
+  PARAMS:
+    NORMALIZE: false
