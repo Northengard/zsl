@@ -21,11 +21,11 @@ MODEL:
     VECTOR_SIZE: 128
     EXTENDED_TWOMLP: true
     EXTENDED_EMB_HEAD: true
-#  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_mobnetV3_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_14.pth'
+  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_2.pth'
 
 TRAIN:
   N_EPOCHS: 30
-  BATCH_SIZE: 20
+  BATCH_SIZE: 19
   SCHEDULER: 'plateau'
   VAL_REQUIRED: false
   IN_MODELL_LOSS: true
@@ -35,7 +35,7 @@ TRAIN:
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 20
+  BATCH_SIZE: 19
 
 LOSS:
   NAME: 'ArcFaceLoss'
