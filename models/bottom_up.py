@@ -112,6 +112,6 @@ class SegRCNN(nn.Module):
 
         x = self.last_block(x)
         if self.norm_output:
-            x /= torch.norm(x, p=2, dim=-1)[..., None]
+            x /= torch.norm(x, p=2, dim=-1).detach()[..., None]
 
         return x

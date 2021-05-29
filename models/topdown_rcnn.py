@@ -182,7 +182,7 @@ class FastRCNNPredictor(nn.Module):
         x = x.flatten(start_dim=1)
         embeddings = self.embedder(x)
         if self.norm_vectors:
-            embeddings /= torch.norm(embeddings, p=2, dim=-1)[:, None]
+            embeddings /= torch.norm(embeddings, p=2, dim=-1).detach()[..., None]
         bbox_deltas = self.bbox_pred(x)
 
         return embeddings, bbox_deltas

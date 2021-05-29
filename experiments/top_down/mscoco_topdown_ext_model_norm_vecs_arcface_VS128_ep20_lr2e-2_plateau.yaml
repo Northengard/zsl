@@ -1,0 +1,46 @@
+SYSTEM:
+  LOG_DIR: "logs"
+  SNAPSHOT_DIR: 'snapshots'
+  WORKERS: 12
+  NGPUS: 1
+  SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
+  PRINT_FREQ: 100
+  PARALLEL: False
+
+DATASET:
+  NAME: "mscoco"
+  PARAMS:
+    DATA_PATH: '/storage/Datasets/mscoco'
+    IMAGE_SIZE:
+      - 1280
+      - 960
+
+MODEL:
+  NAME: "topdown_rcnn"
+  PARAMS:
+    VECTOR_SIZE: 128
+    EXTENDED_TWOMLP: true
+    EXTENDED_EMB_HEAD: true
+  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_2.pth'
+  NORM_VECTORS: true
+
+TRAIN:
+  N_EPOCHS: 30
+  BATCH_SIZE: 19
+  SCHEDULER: 'plateau'
+  VAL_REQUIRED: false
+  IN_MODELL_LOSS: true
+  LR: 2e-2
+  LR_FACTOR: 0.2
+  LR_STEPS: [2, 0, 0, 0]
+  UPDATE_STEP: 1
+
+TEST:
+  BATCH_SIZE: 19
+
+LOSS:
+  NAME: 'ArcFaceLoss'
+
+TRANSFORMATIONS:
+  PARAMS:
+    NORMALIZE: false
