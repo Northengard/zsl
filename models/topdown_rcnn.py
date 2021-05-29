@@ -31,10 +31,11 @@ def topdown_rcnn(config):
     num_classes = config.LOSS.PARAMS.NUM_CLS
     embedding_size = config.MODEL.PARAMS.VECTOR_SIZE
     embeddings_loss_function = getattr(losses, config.LOSS.NAME)(config)
-    return TopDownRCNN(config.MODEL.PARAMS, num_classes, embedding_size, embeddings_loss_function)
+    norm_vectors = config.MODEL.NORM_VECTORS
+    return TopDownRCNN(config.MODEL.PARAMS, norm_vectors, num_classes, embedding_size, embeddings_loss_function)
 
 
-def get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_function):
+def get_roi(cfg, norm_vectors, out_channels, num_classes, embedding_size, embeddings_loss_function):
     box_score_thresh = cfg.BBOX.SCORE_THRSH
     box_nms_thresh = cfg.BBOX.NMS_THRSH
     box_detections_per_img = cfg.BBOX.DET_PER_IMH
@@ -55,6 +56,7 @@ def get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_func
         representation_size)
 
     box_predictor = FastRCNNPredictor(
+        norm_vectors,
         extendend_emb_head,
         representation_size,
         num_classes + 1,
@@ -69,14 +71,15 @@ def get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_func
 
 
 class TopDownRCNN(nn.Module):
-    def __init__(self, cfg, num_classes, embedding_size, embeddings_loss_function):
+    def __init__(self, cfg, norm_vectors, num_classes, embedding_size, embeddings_loss_function):
         super(TopDownRCNN, self).__init__()
         model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=True)
         self.preprocess = model.transform
+        self.norm_vectors = norm_vectors
         self.backbone = model.backbone
         out_channels = self.backbone.out_channels
         self.rpn = model.rpn
-        self.roi_heads = get_roi(cfg, out_channels, num_classes, embedding_size, embeddings_loss_function)
+        self.roi_heads = get_roi(cfg, norm_vectors, out_channels, num_classes, embedding_size, embeddings_loss_function)
 
     @property
     def support_matrix(self):
@@ -159,11 +162,18 @@ class FastRCNNPredictor(nn.Module):
         num_classes (int): number of output classes (including background)
     """
 
-    def __init__(self, in_channels, num_classes, embedding_size):
+    def __init__(self, norm_vectors, extendend_emb_head, in_channels, num_classes, embedding_size):
         super(FastRCNNPredictor, self).__init__()
+        self.extendend_emb_head = extendend_emb_head
         self.num_classes = num_classes
+        self.norm_vectors = norm_vectors
         self.embedding_size = embedding_size
-        self.embedder = nn.Linear(in_channels, embedding_size)
+        if extendend_emb_head:
+            self.embedder = nn.Sequential(nn.Linear(in_channels, in_channels * 2),
+                                          nn.Linear(in_channels * 2, in_channels),
+                                          nn.Linear(in_channels, embedding_size))
+        else:
+            self.embedder = nn.Linear(in_channels, embedding_size)
         self.bbox_pred = nn.Linear(in_channels, num_classes * 4)
 
     def forward(self, x):
@@ -171,6 +181,8 @@ class FastRCNNPredictor(nn.Module):
             assert list(x.shape[2:]) == [1, 1]
         x = x.flatten(start_dim=1)
         embeddings = self.embedder(x)
+        if self.norm_vectors:
+            embeddings /= torch.norm(embeddings, p=2, dim=-1)[:, None]
         bbox_deltas = self.bbox_pred(x)
 
         return embeddings, bbox_deltas

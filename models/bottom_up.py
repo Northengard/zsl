@@ -11,11 +11,10 @@ def test_seg_rcnn(model, device, logger):
     try:
         with torch.no_grad():
             dummy = torch.rand(2, 3, 800, 800).to(device)
-            dummy_output_1, dummy_output_2 = model(dummy)
+            dummy_output_1= model(dummy)
             dummy = dummy.to('cpu')
             dummy_output_1 = dummy_output_1.to('cpu')
-            dummy_output_2 = dummy_output_2.to('cpu')
-            del dummy, dummy_output_1, dummy_output_2
+            del dummy, dummy_output_1
         logger.info('passed')
         return True
     except Exception as err:
@@ -113,6 +112,6 @@ class SegRCNN(nn.Module):
 
         x = self.last_block(x)
         if self.norm_output:
-            x /= torch.norm(x, p=2, dim=-1)
+            x /= torch.norm(x, p=2, dim=-1)[..., None]
 
         return x
