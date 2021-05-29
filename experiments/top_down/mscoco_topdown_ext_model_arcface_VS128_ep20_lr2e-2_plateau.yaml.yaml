@@ -1,16 +1,16 @@
 SYSTEM:
   LOG_DIR: "logs"
   SNAPSHOT_DIR: 'snapshots'
-  WORKERS: 3
+  WORKERS: 12
   NGPUS: 1
   SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
-  PRINT_FREQ: 300
+  PRINT_FREQ: 100
   PARALLEL: False
 
 DATASET:
   NAME: "mscoco"
   PARAMS:
-    DATA_PATH: 'data/ms_coco'
+    DATA_PATH: '/storage/Datasets/mscoco'
     IMAGE_SIZE:
       - 1280
       - 960
@@ -18,22 +18,24 @@ DATASET:
 MODEL:
   NAME: "topdown_rcnn"
   PARAMS:
-    VECTOR_SIZE: 64
-  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_mobnetV3_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_35.pth'
+    VECTOR_SIZE: 128
+    EXTENDED_TWOMLP: true
+    EXTENDED_EMB_HEAD: true
+#  PRETRAINED: 'snapshots/mscoco/seg_rcnn/mscoco_sr_mobnetV3_bs64_ep200_lr3e-2_plateau/best_seg_rcnn_epoch_14.pth'
 
 TRAIN:
-  N_EPOCHS: 60
-  BATCH_SIZE: 12
+  N_EPOCHS: 30
+  BATCH_SIZE: 20
   SCHEDULER: 'plateau'
   VAL_REQUIRED: false
   IN_MODELL_LOSS: true
-  LR: 3e-2
+  LR: 2e-2
   LR_FACTOR: 0.2
-  LR_STEPS: [4, 0, 0, 0]
+  LR_STEPS: [2, 0, 0, 0]
   UPDATE_STEP: 1
 
 TEST:
-  BATCH_SIZE: 12
+  BATCH_SIZE: 20
 
 LOSS:
   NAME: 'ArcFaceLoss'
