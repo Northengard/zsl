@@ -798,16 +798,17 @@ class RoIHeads(nn.Module):
         if self._divisors.device != class_embeddings.device:
             self._divisors = self._divisors.to(class_embeddings.device)
             self._support_matrix = self._support_matrix.to(class_embeddings.device)
-        gt_labels = torch.cat(labels, dim=0)
-        r_targets = torch.cat(regression_targets, dim=0)
-        non_corrupted_boxes = torch.isnan(r_targets).sum(1) == 0
-        gt_labels = gt_labels[non_corrupted_boxes]
-        cls_emb = class_embeddings[non_corrupted_boxes]
+        with torch.no_grad():
+            gt_labels = torch.cat(labels, dim=0).detach()
+            r_targets = torch.cat(regression_targets, dim=0).detach()
+            non_corrupted_boxes = torch.isnan(r_targets).sum(1) == 0
+            gt_labels = gt_labels[non_corrupted_boxes]
+            cls_emb = class_embeddings[non_corrupted_boxes]
 
-        cls_ids, counts = torch.unique(gt_labels, return_counts=True)
-        for cls_id, count in zip(cls_ids, counts):
-            self._divisors[cls_id] += count
-            self._support_matrix[cls_id] += cls_emb[gt_labels == cls_id].sum()
+            cls_ids, counts = torch.unique(gt_labels, return_counts=True)
+            for cls_id, count in zip(cls_ids, counts):
+                self._divisors[cls_id] += count
+                self._support_matrix[cls_id] += cls_emb[gt_labels == cls_id].sum()
 
     def forward(self,
                 features,  # type: Dict[str, Tensor]
