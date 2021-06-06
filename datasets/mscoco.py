@@ -157,9 +157,9 @@ class MsCocoDataset(Dataset):
                                  for obj_id, obj_ann in enumerate(img_annotations) if not obj_mask[obj_id]])
         seg_masks = self._get_seg_map(image.shape[:-1], img_annotations)
         # 'bbox': bboxes, 'category_id': category_ids,
-        sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes}
+        sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes,
+                  'labels': torch.from_numpy(category_ids).to(torch.int64)}
         sample = self.transforms(sample)
-        sample['targets'] = {'boxes': sample['bbox'], 'labels': torch.from_numpy(category_ids).to(torch.int64)}
-        sample.pop('bbox')
+        sample['targets'] = {'boxes': sample.pop('bbox'), 'labels': sample.pop('labels')}
         sample['idx'] = idx
         return sample

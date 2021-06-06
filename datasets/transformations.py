@@ -342,7 +342,8 @@ class AlbumTransforms:
     def __init__(self, conf):
         color_transform_params = conf.TRANSFORMATIONS.PARAMS.COLOR
         self.train_transofrm = album.Compose([
-            album.RandomCrop(width=450, height=450),
+            # album.RandomSizedBBoxSafeCrop(height=None, width=None, p=0.5),
+            album.Rotate(),
             album.HorizontalFlip(p=0.5),
             album.VerticalFlip(p=0.5),
             album.OneOf([album.RandomBrightnessContrast(p=0.5),
@@ -352,11 +353,13 @@ class AlbumTransforms:
                                            hue=color_transform_params.HUE, p=0.5)],
                         p=1),
             album.GaussianBlur(p=0.5),
-        ], bbox_params=album.BboxParams(format='pascal_voc', min_area=1024,
+        ], bbox_params=album.BboxParams(format='pascal_voc', min_area=512,
                                         min_visibility=0.2, label_fields=['class_labels']))
 
     def __call__(self, sample):
         sample = self.train_transofrm(image=sample['image'], bboxes=sample['bbox'],
-                                      class_labels=sample['image_labels'])
-        sample['image_labels'] = sample.pop('class_labels')
+                                      class_labels=sample['labels'])
+        sample['labels'] = torch.tensor(sample.pop('class_labels')).to(torch.int64)
+        sample['bbox'] = torch.tensor(sample.pop('bboxes'))
+        sample['image'] = torch.from_numpy(sample['image'].transpose(2, 0, 1) / 255).to(torch.float32)
         return sample

@@ -1,7 +1,7 @@
 SYSTEM:
   LOG_DIR: "logs"
   SNAPSHOT_DIR: 'snapshots'
-  WORKERS: 12
+  WORKERS: 0
   NGPUS: 1
   SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
   PRINT_FREQ: 100
@@ -11,6 +11,12 @@ DATASET:
   NAME: "mscoco"
   PARAMS:
     DATA_PATH: '/storage/Datasets/mscoco'
+    SUPERCATEG:
+      - 'vehicle'
+      - 'outdoor'
+      - 'animal'
+      - 'furniture'
+      - 'person'
     IMAGE_SIZE:
       - 1280
       - 960
