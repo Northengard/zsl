@@ -743,6 +743,9 @@ class RoIHeads(nn.Module):
         # TODO: SUPPORT VECTORS ARE REQUIRED
         # TODO: ADD, DELETE
         device = class_vectors.device
+        if self._support_matrix.device != device:
+            self._support_matrix = self._support_matrix.to(device)
+            self._divisors = self._divisors.to(device)
         num_classes = self._support_matrix.shape[0]  # [(self._support_matrix != 0).all(1)].shape[0]
 
         boxes_per_image = [boxes_in_image.shape[0] for boxes_in_image in proposals]

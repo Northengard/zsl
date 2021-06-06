@@ -21,7 +21,7 @@ MODEL:
     VECTOR_SIZE: 128
     EXTENDED_TWOMLP: true
     EXTENDED_EMB_HEAD: true
-  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_2.pth'
+  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_4.pth'
 
 TRAIN:
   N_EPOCHS: 30

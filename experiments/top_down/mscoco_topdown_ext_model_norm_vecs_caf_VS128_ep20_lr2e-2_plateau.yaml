@@ -21,7 +21,17 @@ MODEL:
     VECTOR_SIZE: 128
     EXTENDED_TWOMLP: true
     EXTENDED_EMB_HEAD: true
-  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_2.pth'
+    BBOX:
+      SCORE_THRSH: 0.05
+      NMS_THRSH: 0.2
+      DET_PER_IMH: 60
+      FG_IOU_THRSH: 0.5
+      BG_IOU_THRSH: 0.5
+      BS_PER_IMG: 512
+      POS_FRAQ: 0.25
+      REG_W: None
+      REPR_SIZE: 1024
+  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_norm_vecs_caf_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_29.pth'
   NORM_VECTORS: true
 
 TRAIN:
@@ -37,6 +47,7 @@ TRAIN:
 
 TEST:
   BATCH_SIZE: 19
+  VISUALIZE: true
 
 LOSS:
   NAME: 'CAFLoss'

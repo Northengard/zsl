@@ -19,20 +19,20 @@ MODEL:
   NAME: "topdown_rcnn"
   PARAMS:
     VECTOR_SIZE: 128
-    EXTENDED_TWOMLP: true
-    EXTENDED_EMB_HEAD: true
+    EXTENDED_TWOMLP: false
+    EXTENDED_EMB_HEAD: false
     BBOX:
       SCORE_THRSH: 0.5
       NMS_THRSH: 0.2
       DET_PER_IMH: 60
       FG_IOU_THRSH: 0.5
       BG_IOU_THRSH: 0.5
-      BS_PER_IMG: 512
+      BS_PER_IMG: 1024
       POS_FRAQ: 0.25
       REG_W: None
       REPR_SIZE: 1024
-  PRETRAINED: 'snapshots/mscoco/topdown_rcnn/mscoco_topdown_ext_model_norm_vecs_arcface_VS128_ep20_lr2e-2_plateau/best_topdown_rcnn_epoch_29.pth'
-  NORM_VECTORS: true
+  PRETRAINED: ''
+  NORM_VECTORS: false
 
 TRAIN:
   N_EPOCHS: 30
@@ -40,9 +40,9 @@ TRAIN:
   SCHEDULER: 'plateau'
   VAL_REQUIRED: false
   IN_MODELL_LOSS: true
-  LR: 2e-2
+  LR: 3e-2
   LR_FACTOR: 0.2
-  LR_STEPS: [2, 0, 0, 0]
+  LR_STEPS: [4, 0, 0, 0]
   UPDATE_STEP: 1
 
 TEST:
@@ -53,5 +53,6 @@ LOSS:
   NAME: 'ArcFaceLoss'
 
 TRANSFORMATIONS:
+  USE_ALB: true
   PARAMS:
     NORMALIZE: false

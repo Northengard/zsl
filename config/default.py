@@ -21,6 +21,7 @@ _C.DATASET.PARAMS = CfgNode(new_allowed=True)
 
 _C.TRANSFORMATIONS = CfgNode()
 _C.TRANSFORMATIONS.TYPE = 'v1_transforms'
+_C.TRANSFORMATIONS.USE_ALB = False
 _C.TRANSFORMATIONS.PARAMS = CfgNode(new_allowed=True)
 
 _C.MODEL = CfgNode()

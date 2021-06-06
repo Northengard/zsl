@@ -6,6 +6,7 @@ from torchvision import transforms
 from skimage.draw import polygon
 from utils.visualisation import alpha_blend
 from PIL import Image
+import albumentations as album
 
 
 class HorizontalFlip:
@@ -242,6 +243,7 @@ class GaussianBlur:
     """
     Gaussian filter with different kernel size.
     """
+
     def __init__(self, max_blur_kernel=8, min_blur_kernel=5):
         """
         Init parameters:
@@ -264,6 +266,7 @@ class ToTensor:
     """
     Convert ndarrays in sample to Tensors.
     """
+
     def __init__(self, normalize=False):
         self.to_tensor = transforms.ToTensor()
         self.normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
@@ -332,4 +335,28 @@ class Normalize:
 
     def __call__(self, sample):
         sample = self.normalize(sample)
+        return sample
+
+
+class AlbumTransforms:
+    def __init__(self, conf):
+        color_transform_params = conf.TRANSFORMATIONS.PARAMS.COLOR
+        self.train_transofrm = album.Compose([
+            album.RandomCrop(width=450, height=450),
+            album.HorizontalFlip(p=0.5),
+            album.VerticalFlip(p=0.5),
+            album.OneOf([album.RandomBrightnessContrast(p=0.5),
+                         album.ColorJitter(brightness=color_transform_params.BRIGHTNESS,
+                                           contrast=color_transform_params.CONTRAST,
+                                           saturation=color_transform_params.SATURATION,
+                                           hue=color_transform_params.HUE, p=0.5)],
+                        p=1),
+            album.GaussianBlur(p=0.5),
+        ], bbox_params=album.BboxParams(format='pascal_voc', min_area=1024,
+                                        min_visibility=0.2, label_fields=['class_labels']))
+
+    def __call__(self, sample):
+        sample = self.train_transofrm(image=sample['image'], bboxes=sample['bbox'],
+                                      class_labels=sample['image_labels'])
+        sample['image_labels'] = sample.pop('class_labels')
         return sample

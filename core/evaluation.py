@@ -83,7 +83,7 @@ def evaluation(config, model, dataloader, device):
                                              color=(0, 144, 255),
                                              thickness=3)
             if config.TEST.VISUALIZE:
-                show_image(real_image, f'img_with_box', wk=1)
+                show_image(real_image, f'img_with_box', wk=0)
             tq.update(1)
             tq.set_postfix(avg_loss=loss_handler.avg)
     tq.close()

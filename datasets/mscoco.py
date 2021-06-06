@@ -7,7 +7,7 @@ from pycocotools.coco import COCO
 
 from torch.utils.data import Dataset
 
-from .transformations import Transforms, get_pad
+from .transformations import Transforms, get_pad, AlbumTransforms
 from .common import wrap_dataset
 
 
@@ -59,7 +59,11 @@ class MsCocoDataset(Dataset):
         self._cat_maper = dict(zip(self._categories_ids, list(range(1, len(self._categories_ids) + 1))))
 
         self._img_id_vs_annot_dict = self._coco_api.imgToAnns
-        self.transforms = Transforms(conf=config, is_train=is_train)
+
+        if not config.TRANSFORMATIONS.USE_ALB:
+            self.transforms = Transforms(conf=config, is_train=is_train)
+        else:
+            self.transforms = AlbumTransforms(conf=config)
 
         # clear categories ids
         self._img_id_vs_annot_dict = {img_id: self._check_annot_categ(img_annot)
