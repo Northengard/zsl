@@ -25,4 +25,6 @@ LOSS_DEFAULTS = {'ContrastiveLoss': _CONTRUSTIVE_LOSS,
                  'DiscriminativeLoss': _DISCRIMINATIVE,
                  'SegArcFace': _SEGARCFACE,
                  'ArcFaceLoss': _SEGARCFACE,
-                 'CAFLoss': _CAF_LOSS}
+                 'CAFLoss': _CAF_LOSS,
+                 'LargeMarginSoftmaxLoss': _SEGARCFACE,
+                 'MultiSimilarityLoss': _SEGARCFACE}

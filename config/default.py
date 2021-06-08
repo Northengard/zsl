@@ -52,6 +52,7 @@ _C.LOSS = CfgNode()
 _C.LOSS.NAME = 'ContrastiveLoss'
 _C.LOSS.PARAMS = CfgNode(new_allowed=True)
 _C.LOSS.SIZE_AVERAGE = False
+_C.LOSS.LOSS_WEIGHT = 1.
 
 
 def update_config(cfg, args):

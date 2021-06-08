@@ -29,6 +29,10 @@ def annot_check(annots):
     return [obj for obj in annots if type(obj['segmentation']) == list]
 
 
+def check_boxes(annots):
+    return [obj for obj in annots if len(obj['bbox']) > 0]
+
+
 def check_areas(annots, img_area):
     for obj in annots:
         if round(obj['area']) / img_area > 0.9:
@@ -76,6 +80,12 @@ class MsCocoDataset(Dataset):
                                       for img_id, img_annot in self._img_id_vs_annot_dict.items()}
         self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
                                       if len(img_annot) > 0}
+        # clear empty boxes
+        self._img_id_vs_annot_dict = {img_id: check_boxes(img_annot)
+                                      for img_id, img_annot in self._img_id_vs_annot_dict.items()}
+        self._img_id_vs_annot_dict = {img_id: img_annot for img_id, img_annot in self._img_id_vs_annot_dict.items()
+                                      if len(img_annot) > 0}
+
         self._indexes = list(self._img_id_vs_annot_dict.keys())
         areas = {img_id: self._coco_api.loadImgs(img_id)[0]['height'] * self._coco_api.loadImgs(img_id)[0]['width']
                  for img_id in self._indexes}
@@ -157,9 +167,8 @@ class MsCocoDataset(Dataset):
                                  for obj_id, obj_ann in enumerate(img_annotations) if not obj_mask[obj_id]])
         seg_masks = self._get_seg_map(image.shape[:-1], img_annotations)
         # 'bbox': bboxes, 'category_id': category_ids,
-        sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes,
-                  'labels': torch.from_numpy(category_ids).to(torch.int64)}
+        sample = {'image': image, 'image_labels': seg_masks, 'bbox': bboxes}
         sample = self.transforms(sample)
-        sample['targets'] = {'boxes': sample.pop('bbox'), 'labels': sample.pop('labels')}
+        sample['targets'] = {'boxes': sample.pop('bbox'), 'labels': torch.from_numpy(category_ids).to(torch.int64)}
         sample['idx'] = idx
         return sample
