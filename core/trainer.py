@@ -35,6 +35,7 @@ def train(model, dataloader, loss_fn, optimizer, sheduler, device, logger, board
         loss.backward()
         loss_handler.update(loss.item())
         if (itr + 1) % cfg.TRAIN.UPDATE_STEP == 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
             optimizer.zero_grad()
         if (itr + 1) % cfg.SYSTEM.PRINT_FREQ == 0:
