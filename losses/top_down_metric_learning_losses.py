@@ -7,7 +7,7 @@ from pytorch_metric_learning import losses
 class BaseLoss(nn.Module):
     def __init__(self, config):
         super(BaseLoss, self).__init__()
-        self.num_classes = config.LOSS.PARAMS.NUM_CLS + 1
+        self.num_classes = config.LOSS.PARAMS.NUM_CLS
         self.embedding_size = config.MODEL.PARAMS.VECTOR_SIZE
         self.criterion = getattr(losses, config.LOSS.NAME)(num_classes=self.num_classes,
                                                            embedding_size=self.embedding_size)
@@ -15,7 +15,9 @@ class BaseLoss(nn.Module):
 
     def forward(self, preds, labels):
         batch_size = preds.shape[0]
-        loss = self.criterion(preds, labels.to(torch.long))
+        mask = labels > 0
+        real_labels = labels[mask] - 1
+        loss = self.criterion(preds[mask], real_labels.to(torch.long))
 
         if self.size_average:
             loss /= batch_size
@@ -37,7 +39,9 @@ class MultiSimilarityLoss(nn.Module):
 
     def forward(self, preds, labels):
         batch_size = preds.shape[0]
-        loss = self.criterion(preds, labels.to(torch.long))
+        mask = labels > 0
+        real_labels = labels[mask] - 1
+        loss = self.criterion(preds[mask], real_labels.to(torch.long))
 
         if self.size_average:
             loss /= batch_size

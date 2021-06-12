@@ -1,0 +1,66 @@
+SYSTEM:
+  LOG_DIR: "logs"
+  SNAPSHOT_DIR: 'snapshots'
+  WORKERS: 12
+  NGPUS: 1
+  SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
+  PRINT_FREQ: 100
+  PARALLEL: False
+
+DATASET:
+  NAME: "mscoco"
+  PARAMS:
+    DATA_PATH: '/storage/Datasets/mscoco'
+    SUPERCATEG:
+      - 'vehicle'
+      - 'outdoor'
+      - 'animal'
+      - 'furniture'
+      - 'person'
+    IMAGE_SIZE:
+      - 1280
+      - 960
+
+MODEL:
+  NAME: "topdown_rcnn"
+  PARAMS:
+    VECTOR_SIZE: 128
+    EXTENDED_TWOMLP: true
+    EXTENDED_EMB_HEAD: true
+    BBOX:
+      SCORE_THRSH: 0.5
+      NMS_THRSH: 0.2
+      DET_PER_IMH: 60
+      FG_IOU_THRSH: 0.5
+      BG_IOU_THRSH: 0.5
+      BS_PER_IMG: 1024
+      POS_FRAQ: 0.25
+      REG_W: None
+      REPR_SIZE: 1024
+  PRETRAINED: ''
+  NORM_VECTORS: false
+
+TRAIN:
+  N_EPOCHS: 30
+  BATCH_SIZE: 19
+  SCHEDULER: 'plateau'
+  VAL_REQUIRED: false
+  IN_MODELL_LOSS: true
+  LR: 3e-2
+  LR_FACTOR: 0.2
+  LR_STEPS: [2, 0, 0, 0]
+  UPDATE_STEP: 1
+
+TEST:
+  BATCH_SIZE: 19
+
+LOSS:
+  NAME: 'ArcFaceLoss'
+  LOSS_WEIGHT: 0.8
+  PARAMS:
+    NUM_CLS: 30
+
+TRANSFORMATIONS:
+  USE_ALB: false
+  PARAMS:
+    NORMALIZE: false
