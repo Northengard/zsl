@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from pytorch_metric_learning import losses
-from top_down_metric_learning_losses import BaseLoss
+from .top_down_metric_learning_losses import BaseLoss
 
 
 class SegArcFace(nn.Module):
