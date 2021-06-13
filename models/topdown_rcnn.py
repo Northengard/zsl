@@ -174,7 +174,7 @@ class FastRCNNPredictor(nn.Module):
                                           nn.Linear(in_channels, embedding_size))
         else:
             self.embedder = nn.Linear(in_channels, embedding_size)
-        self.bbox_pred = nn.Linear(in_channels, num_classes * 4)
+        self.bbox_pred = nn.Linear(in_channels, 4)
 
     def forward(self, x):
         if x.dim() == 4:

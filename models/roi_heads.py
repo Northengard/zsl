@@ -46,16 +46,11 @@ def fastrcnn_custom_loss(embedding_loss, class_embeddings, box_regression, label
     # the corresponding ground truth labels, to be used with
     # advanced indexing
     sampled_pos_inds_subset = torch.where(labels > 0)[0]
-    labels_pos = labels[sampled_pos_inds_subset]
-    N = class_embeddings.shape[0]
-    box_regression = box_regression.reshape(N, box_regression.size(-1) // 4, 4)
 
-    box_loss = F.smooth_l1_loss(
-        box_regression[sampled_pos_inds_subset, labels_pos],
-        regression_targets[sampled_pos_inds_subset],
-        beta=1 / 9,
-        reduction='sum',
-    )
+    box_loss = F.smooth_l1_loss(box_regression[sampled_pos_inds_subset],
+                                regression_targets[sampled_pos_inds_subset],
+                                beta=1 / 9,
+                                reduction='sum')
     box_loss = box_loss / (labels.numel() + 1e-6)
 
     return classification_loss, box_loss
@@ -762,19 +757,14 @@ class RoIHeads(nn.Module):
         for boxes, scores, image_shape in zip(pred_boxes_list, pred_scores_list, image_shapes):
             boxes = box_ops.clip_boxes_to_image(boxes, image_shape)
 
-            # create labels for each prediction
-            labels = torch.arange(num_classes, device=device)
-            labels = labels.view(1, -1).expand_as(scores)
-
             # remove predictions with the background label
             boxes = boxes[:, 1:]
             scores = scores[:, 1:]
-            labels = labels[:, 1:]
 
             # batch everything, by making every class prediction be a separate instance
             boxes = boxes.reshape(-1, 4)
-            scores = scores.reshape(-1)
-            labels = labels.reshape(-1)
+            labels = scores.argmax(1)
+            scores = scores.max(1)
 
             # remove low scoring boxes
             inds = torch.where(scores > self.score_thresh)[0]
