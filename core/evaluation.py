@@ -30,6 +30,7 @@ def evaluation(config, model, dataloader, device):
     tq.set_description(f'Evaluation:')
     loss_handler = AverageMeter()
     boxes_list = list()
+    # model.support_matrix = torch.zeros(size=(num_classes + 1, config.MODEL.PARAMS.VECTOR_SIZE), device=device)
     with torch.no_grad():
         for itr, sample in enumerate(dataloader):
             real_image, img_dict, img_id = dataloader.dataset.get_image(itr, get_meta=True)

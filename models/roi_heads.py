@@ -436,8 +436,7 @@ def _onnx_paste_mask_in_image(mask, box, im_h, im_w):
     y_0 = torch.max(torch.cat((box[1].unsqueeze(0), zero)))
     y_1 = torch.min(torch.cat((box[3].unsqueeze(0) + one, im_h.unsqueeze(0))))
 
-    unpaded_im_mask = mask[(y_0 - box[1]):(y_1 - box[1]),
-                      (x_0 - box[0]):(x_1 - box[0])]
+    unpaded_im_mask = mask[(y_0 - box[1]):(y_1 - box[1]), (x_0 - box[0]):(x_1 - box[0])]
 
     # TODO : replace below with a dynamic padding when support is added in ONNX
 
@@ -720,13 +719,13 @@ class RoIHeads(nn.Module):
 
             cls_ids, counts = torch.unique(labels_in_image, return_counts=True)
             for cls_id, count in zip(cls_ids, counts):
-                if cls_id > self._divisors.shape[0]:
+                if cls_id.item() > self._support_matrix.shape[0]:
                     self._divisors = torch.cat([self._divisors,
                                                 torch.zeros(cls_id + 1 - self._divisors.shape[0],
                                                             requires_grad=False, device=device)],
                                                0)
-                    self._support_matrix = torch.cat([self._divisors,
-                                                      torch.zeros(cls_id + 1 - self._divisors.shape[0],
+                    self._support_matrix = torch.cat([self._support_matrix,
+                                                      torch.zeros(cls_id + 1 - self._support_matrix.shape[0],
                                                                   self._support_matrix.shape[1],
                                                                   requires_grad=False, device=device)],
                                                      0)

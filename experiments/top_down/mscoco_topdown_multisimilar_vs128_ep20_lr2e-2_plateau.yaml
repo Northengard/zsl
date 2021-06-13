@@ -1,0 +1,64 @@
+SYSTEM:
+  LOG_DIR: "logs"
+  SNAPSHOT_DIR: 'snapshots'
+  WORKERS: 2
+  NGPUS: 1
+  SAVE_FREQ: 1  # in epoch. In general may be better to operate with iterations.
+  PRINT_FREQ: 100
+  PARALLEL: False
+
+DATASET:
+  NAME: "mscoco"
+  PARAMS:
+    DATA_PATH: 'data/ms_coco'
+#    SUPERCATEG:
+#      - 'vehicle'
+#      - 'outdoor'
+#      - 'animal'
+#      - 'furniture'
+#      - 'person'
+    IMAGE_SIZE:
+      - 1280
+      - 960
+
+MODEL:
+  NAME: "topdown_rcnn"
+  PARAMS:
+    VECTOR_SIZE: 128
+    EXTENDED_TWOMLP: false
+    EXTENDED_EMB_HEAD: false
+    BBOX:
+      SCORE_THRSH: 0.5
+      NMS_THRSH: 0.1
+      DET_PER_IMH: 100
+      FG_IOU_THRSH: 0.5
+      BG_IOU_THRSH: 0.5
+      BS_PER_IMG: 1024
+      POS_FRAQ: 0.25
+      REG_W: None
+      REPR_SIZE: 1024
+  PRETRAINED: 'snapshots\mscoco\topdown_rcnn\mscoco_topdown_multisimilar_vs128_ep20_lr2e-2_plateau\best_topdown_rcnn_epoch_26.pth'
+  NORM_VECTORS: false
+
+TRAIN:
+  N_EPOCHS: 30
+  BATCH_SIZE: 5
+  SCHEDULER: 'plateau'
+  VAL_REQUIRED: false
+  IN_MODELL_LOSS: true
+  LR: 3e-2
+  LR_FACTOR: 0.2
+  LR_STEPS: [4, 0, 0, 0]
+  UPDATE_STEP: 1
+
+TEST:
+  BATCH_SIZE: 1
+  VISUALIZE: false
+
+LOSS:
+  NAME: 'MultiSimilarityLoss'
+
+TRANSFORMATIONS:
+  USE_ALB: false
+  PARAMS:
+    NORMALIZE: false
